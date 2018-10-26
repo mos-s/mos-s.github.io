@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="Generator" content="EditPlus®">
+  <meta name="Author" content="">
+  <meta name="Keywords" content="">
+  <meta name="Description" content="">
+  <title>Document</title>
+ </head>
+ <body>
+  Ask for ...
+  <script>
+   function getRequestParam(name) {
+	  // if(name=(new
+	  // RegExp('[?&]'+encodeURIComponent(name)+'=([^&]*)')).exec(location.search))
+	  if (name = (new RegExp('[?&]' + encodeURIComponent(name) + '=([^&]*)')).exec(window.location.search)) {
+		return decodeURIComponent(name[1]);
+	  }
+    }
+    var url = "http://dev.mos-cloud.appspot.com/" + "gcs/launchWithUserId" + "?targetUrl=" + encodeURIComponent("http://www.mindofsound.com/bucketAndEmail.html");
+    //var newWindow = window.open("http://dev.mos-cloud.appspot.com/gcs/launchWithUserId?targetUrl=http%3A%2F%2Fwww.mindofsound.com%2FbucketAndEmail.html", "_blank", "top=0, left=0, width=1024, height=850");
+    var newWindow = window.open(url, "_blank", "top=0, left=0, width=1024, height=850");
+    //alert("ask for");
+    //newWindow.close();
+  </script>
+ </body>
+</html>

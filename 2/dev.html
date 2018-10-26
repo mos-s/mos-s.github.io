@@ -1,0 +1,35 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="Generator" content="EditPlus�">
+  <meta name="Author" content="">
+  <meta name="Keywords" content="">
+  <meta name="Description" content="">
+  <title>Media Creator Login</title>
+  <script>
+    var startup;
+
+    function initAfterLoad() {
+      //alert("!!!"); // debug
+      console.log("initAfterLoad");
+      setTimeout(startup, 2000); // give one second for other modules to load (pretty crappy!)
+    }
+  </script>
+
+
+</head>
+
+<body>
+
+  <H3>Developer</H3>
+  <label id="useDevVarsLabelId"></label><br/><br/>
+  <button type="button" onclick="changeUseDevVars(this)">Change useDevVars</button>
+
+  <script type="text/javascript" src="./dev.js?s=ssbcvj" onload="initAfterLoad()"></script>
+
+</body>
+
+</html>
