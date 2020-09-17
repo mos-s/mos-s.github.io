@@ -1,0 +1,22 @@
+DESC
+    Webaudio pitch deduction example from https://webaudiodemos.appspot.com/ 'Pitch Detection' view source.
+    Got some errors (because of timing?)
+        Uncaught DOMException: Unable to decode audio data
+            name:'EncodingError'
+                Because I did not have whistling3.ogg in place.
+        Uncaught TypeError: Cannot read property 'getFloatTimeDomainData' of null
+            presumably because analyser not created yet!
+        On IOS get: TypeError: navigator:getUserMedia(dictionary, callback, arror) navigator:getUserMedia is undefined
+            My pitchJS (streaming with base filter ex) uses: navigator.mediaDevices.getUserMedia ({audio: true, video: false})
+    Note that had to use demo audio or oscillator before could use live input!
+    
+    Uses analyser - audioContext.createAnalyser() to get actual samples to draw wave - analyser.getFloatTimeDomainData( buf );
+    Though sets analyser.fftSize it actually uses samples to do a primitive autocorrelation = autocorrelate( buf, sampleRate ).
+
+    Also - see googEchoCancellation and other 'mandatory' audio vars!!
+        see https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints
+
+PLAN
+
+
+LINKS
