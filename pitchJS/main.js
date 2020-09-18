@@ -19,7 +19,20 @@ const phaseResponseOutput = new Float32Array(5);
 if (navigator.mediaDevices) {
     alert('getUserMedia supported.');
     var supported = navigator.mediaDevices.getSupportedConstraints(); // Note that my old lenovs DO have echo cancellation!
-    navigator.mediaDevices.getUserMedia ({audio: true, video: false})
+    /*"audio": {
+        "mandatory": {
+            "googEchoCancellation": "false",
+            "googAutoGainControl": "false",
+            "googNoiseSuppression": "false",
+            "googHighpassFilter": "false"
+        },
+        "optional": []
+    },*/
+
+    navigator.mediaDevices.getUserMedia ({audio:{
+        volume: 0.5,
+        echoCancellation: false
+      }, video: false})
     .then(function(stream) {
         /*video.srcObject = stream;
         video.onloadedmetadata = function(e) {
