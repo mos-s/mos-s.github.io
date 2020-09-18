@@ -72,7 +72,7 @@ if (navigator.mediaDevices) {
         console.log('The following gUM error occured: ' + err);
     });
 } else {
-    console.log('getUserMedia not supported on your browser!');
+    console.log('getUserMedia not supported on your browser!!');
 }
 // dump script to pre element
 pre.innerHTML = myScript.innerHTML;
