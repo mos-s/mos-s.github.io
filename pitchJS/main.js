@@ -28,10 +28,11 @@ if (navigator.mediaDevices) {
         },
         "optional": []
     },*/
-
+//navigator.mediaDevices.getUserMedia ({audio:true, video: false})
     navigator.mediaDevices.getUserMedia ({audio:{
-        volume: 0.5,
-        echoCancellation: false
+        autoGainControl: false,
+        echoCancellation: false,
+        zoom : 0.1
       }, video: false})
     .then(function(stream) {
         /*video.srcObject = stream;
@@ -42,16 +43,20 @@ if (navigator.mediaDevices) {
         */
         // Create a MediaStreamAudioSourceNode
         // Feed the HTMLMediaElement into it
-        const fred = MediaDevices.getSupportedConstraints();
-        alert("aaa");
-        /*function toggleMic(stream) { // stream is your local WebRTC stream
+        alert("ddd"); 
+        
+        function toggleMic(stream) { // stream is your local WebRTC stream
             var audioTracks = stream.getAudioTracks();
             for (var i = 0, l = audioTracks.length; i < l; i++) {
-              audioTracks[i].enabled = !audioTracks[i].enabled;
+              audioTracks[i].enabled = true; //!audioTracks[i].enabled;
+              var t = audioTracks[i];
+              var constraints = audioTracks[i].getConstraints();
+              var controls = audioTracks[i].getSettings();
+              var fredi = 0;
             }
           }
           toggleMic(stream);
-        */  
+         
         //const audioCtx = new AudioContext(); failed on ios safari
         const audioConstructor = window.AudioContext || window.webkitAudioContext; // worked on both pcchrome and ios safari. see - https://stackoverflow.com/questions/28364122/how-do-i-determine-which-audiocontext-constructor-to-use-in-safari
         const audioCtx = new audioConstructor();
