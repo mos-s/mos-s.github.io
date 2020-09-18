@@ -34,10 +34,10 @@ if (navigator.mediaDevices) {
         const audioCtx = new AudioContext();
         const source = audioCtx.createMediaStreamSource(stream);
         const captureNode = audioCtx.createScriptProcessor(8192, 1, 1);
-        captureNode.addEventListener('audioprocess', (e) => {
+        /*captureNode.addEventListener('audioprocess', (e) => {
           const rawLeftChannelData = inputBuffer.getChannelData(0);
           // rawLeftChannelData is now a typed array with floating point samples
-        });
+        });*/
         /*
         // Create a biquadfilter
         const biquadFilter = audioCtx.createBiquadFilter();
