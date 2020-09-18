@@ -30,7 +30,7 @@ if (navigator.mediaDevices) {
         // Create a MediaStreamAudioSourceNode
         // Feed the HTMLMediaElement into it
         //const fred = MediaDevices.getSupportedConstraints();
- 
+        alert("111");
         //const audioCtx = new AudioContext();
         //const audioCtx = new window.AudioContext();
         const audioCtx = window.AudioContext || window.webkitAudioContext;
