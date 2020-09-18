@@ -30,7 +30,7 @@ if (navigator.mediaDevices) {
         // Create a MediaStreamAudioSourceNode
         // Feed the HTMLMediaElement into it
         //const fred = MediaDevices.getSupportedConstraints();
-        alert("333");
+        alert("666");
         function toggleMic(stream) { // stream is your local WebRTC stream
             var audioTracks = stream.getAudioTracks();
             for (var i = 0, l = audioTracks.length; i < l; i++) {
