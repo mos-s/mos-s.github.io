@@ -155,6 +155,8 @@ function toggleOscillator() {
 }
 
 function toggleLiveInput() {
+	console.log("toggleLiveInput called");
+	alert("toggleLiveInput called");
     if (isPlaying) {
         //stop playing and return
         sourceNode.stop( 0 );
