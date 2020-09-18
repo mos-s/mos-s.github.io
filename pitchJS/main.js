@@ -18,7 +18,7 @@ const phaseResponseOutput = new Float32Array(5);
 // also output the visuals into a video element
 if (navigator.mediaDevices) {
     alert('getUserMedia supported.');
-    var supported = navigator.mediaDevices.getSupportedConstraints(); // Note that my old lenovs DO have echo cancellation!
+    //var supported = navigator.mediaDevices.getSupportedConstraints(); // Note that my old lenovs DO have echo cancellation!
     /*"audio": {
         "mandatory": {
             "googEchoCancellation": "false",
@@ -43,7 +43,7 @@ if (navigator.mediaDevices) {
         */
         // Create a MediaStreamAudioSourceNode
         // Feed the HTMLMediaElement into it
-        alert("ddd"); 
+        alert("eee"); 
         
         function toggleMic(stream) { // stream is your local WebRTC stream
             var audioTracks = stream.getAudioTracks();
