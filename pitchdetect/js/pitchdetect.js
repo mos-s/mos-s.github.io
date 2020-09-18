@@ -96,7 +96,7 @@ function error() {
     alert('Stream generation failed.');
 }
 
-function getUserMedia(dictionary, callback) {
+function getUserMedia() { //dictionary, callback) {
 	/*
 	try {
         navigator.getUserMedia = 
@@ -165,7 +165,8 @@ function toggleLiveInput() {
 			window.cancelAnimationFrame = window.webkitCancelAnimationFrame;
         window.cancelAnimationFrame( rafID );
     }
-    getUserMedia(
+    /*
+	getUserMedia(
     	{
             "audio": {
                 "mandatory": {
@@ -177,6 +178,8 @@ function toggleLiveInput() {
                 "optional": []
             },
         }, gotStream);
+		*/
+	getUserMedia();
 }
 
 function togglePlayback() {
