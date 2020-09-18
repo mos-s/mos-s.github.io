@@ -1,0 +1,18 @@
+DESC
+    Basic webaudio pitch deduction. 
+        Should allow latency deduction by listening to (noisy!) keyboard hit in both ways and comparing times!
+    Cannibalised from view source of https://mdn.github.io/webaudio-examples/stream-source-buffer/
+
+
+
+PLAN
+    Convert to audio only.
+    Disable filter
+    access samples
+    do pitch deduction!?
+    webasm?
+
+
+LINKS
+    Latency (good stuff!) - https://stackoverflow.com/questions/21428511/playing-and-recording-with-a-constant-latency-on-browser-with-javascript-usermed
+        Also refers to worker for recording guitar!
