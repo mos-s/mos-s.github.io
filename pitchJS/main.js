@@ -17,7 +17,7 @@ const phaseResponseOutput = new Float32Array(5);
 // put it into a MediaStreamAudioSourceNode
 // also output the visuals into a video element
 if (navigator.mediaDevices) {
-    console.log('getUserMedia supported.');
+    alert('getUserMedia supported.');
     var supported = navigator.mediaDevices.getSupportedConstraints(); // Note that my old lenovs DO have echo cancellation!
     navigator.mediaDevices.getUserMedia ({audio: true, video: false})
     .then(function(stream) {
@@ -69,10 +69,10 @@ if (navigator.mediaDevices) {
         */
     })
     .catch(function(err) {
-        console.log('The following gUM error occured: ' + err);
+        alert('The following gUM error occured: ' + err);
     });
 } else {
-    console.log('getUserMedia not supported on your browser!!');
+    alert('getUserMedia not supported on your browser!!');
 }
 // dump script to pre element
 pre.innerHTML = myScript.innerHTML;
