@@ -33,9 +33,9 @@ if (navigator.mediaDevices) {
  
         //const audioCtx = new AudioContext();
         //const audioCtx = new window.AudioContext();
-        const audioCtx = window.AudioContext || window.webkitAudioContext
+        const audioCtx = window.AudioContext || window.webkitAudioContext;
         const source = audioCtx.createMediaStreamSource(stream);
-        const captureNode = audioCtx.createScriptProcessor(8192, 1, 1);
+        //const captureNode = audioCtx.createScriptProcessor(8192, 1, 1);
         /*captureNode.addEventListener('audioprocess', (e) => {
           const rawLeftChannelData = inputBuffer.getChannelData(0);
           // rawLeftChannelData is now a typed array with floating point samples
