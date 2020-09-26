@@ -29,7 +29,7 @@
       import PageData from './PageData.js';
 
       const demoCode = async (context) => {
-        await context.audioWorklet.addModule('wasm-worklet-processor.js');
+        await context.audioWorklet.addModule('./wasm-worklet-processor.js');
         const oscillator = new OscillatorNode(context);
         const bypasser = new AudioWorkletNode(context, 'wasm-worklet-processor');
         oscillator.connect(bypasser).connect(context.destination);
