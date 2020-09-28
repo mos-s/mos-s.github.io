@@ -35,6 +35,8 @@
         await context.audioWorklet.addModule(
             'shared-buffer-worklet-processor.js');
         const oscillator = new OscillatorNode(context);
+        window.oscillator = oscillator; // mine
+        alert("wo=" + window.oscillator);
         const sbwNode = new SharedBufferWorkletNode(context);
 
         sbwNode.onInitialized = () => {

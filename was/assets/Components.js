@@ -251,7 +251,7 @@ const DemoRunner = (demoFunction) => {
       GitHubSourceUrl + window.location.pathname.slice(RepoPrefix.length);
   const audioContext = new AudioContext();
   const logger = new Logger();
-
+  let freq = 440;
   // Creates a button and its logic.
   let isFirstClick = true;
   const eButton = document.createElement('button');
@@ -262,6 +262,10 @@ const DemoRunner = (demoFunction) => {
       if (isFirstClick) {
         demoFunction(audioContext, logger);
         isFirstClick = false;
+      }
+      if (window.oscillator != null) {
+        freq = freq + 100;
+        window.oscillator.frequency.setValueAtTime(freq, audioContext.currentTime); // value in hertz
       }
       audioContext.resume();
       logger.post('Context resumed.');
