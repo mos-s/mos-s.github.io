@@ -5,10 +5,10 @@
 
 #include <stdio.h>
 
-class Test {}; // This will fail in C mode
+//class Test {}; // This will fail in C mode
 
 int main() {
-  printf("hello, from web assembly hellowWorld.cpp!\n");
+  printf("hello, from web assembly helloWorld.cpp!\n");
   return 0;
 }
 
