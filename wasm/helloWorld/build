@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# My first script
+
+pushd .
+echo " =============================================  Build helloWorld for webasm!   ============================================="
+cp helloWorld.cpp c:/emsdk/upstream/emscripten/temp.cpp
+cd c:/emsdk/upstream/emscripten
+
+# ============================================= Compile to a.out.wasm and a.out.js with EMSCRIPTEN =============================================
+echo "Compiling to a.out.wasm and a.out.js with EMSCRIPTEN"
+
+# following works in powershell but in bash script fails with error: /usr/bin/env: ‘python3’: Permission denied
+# emcc.py -O3 -s WASM=1 -s EXTRA_EXPORTED_RUNTIME_METHODS='["cwrap"]' ./temp.cpp
+
+# following fails with:error: emscripten requires python 3.5 or above
+# c:/python27/python emcc.py -O3 -s WASM=1 -s EXTRA_EXPORTED_RUNTIME_METHODS='["cwrap"]' ./temp.cpp
+
+# following works in bash
+C:/emsdk/python/3.7.4-pywin32_64bit/python emcc.py -O3 -s WASM=1 -s EXTRA_EXPORTED_RUNTIME_METHODS='["cwrap"]' ./temp.cpp
+
+# ============================================= End of compile to a.out.wasm and a.out.js with EMSCRIPTEN =============================================
+echo "Moving back to project folder"
+popd
+echo "Copying a.out.wasm and a.out.js to project folder"
+
+cp c:/emsdk/upstream/emscripten/a.out* .

@@ -8,7 +8,7 @@
 class Test {}; // This will fail in C mode
 
 int main() {
-  printf("hello, from markv and co!\n");
+  printf("hello, from web assembly hellowWorld.cpp!\n");
   return 0;
 }
 
