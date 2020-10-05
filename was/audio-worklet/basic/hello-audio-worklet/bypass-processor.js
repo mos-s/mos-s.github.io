@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 /**
- * A simple bypass node demo.
+ * A simple bypass node demo. Just directs sound from oscilator node to outgoing?
  *
  * @class BypassProcessor
  * @extends AudioWorkletProcessor

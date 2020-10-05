@@ -1,0 +1,33 @@
+HOW TO BUILD AND RUN HELLO WORLD
+
+    Create upstream/emscripten/tests/hello_world.cpp containing:
+        //--------------------------------------------
+        #include <stdio.h>
+
+        class Test {}; // This will fail in C mode
+
+        int main() {
+        printf("hello, from markv and co!\n");
+        return 0;
+        }
+        //--------------------------------------------
+
+    Then in upstream/emscripten:
+        emcc -O3 -s WASM=1 -s EXTRA_EXPORTED_RUNTIME_METHODS='["cwrap"]' ./tests/hello_world.cpp
+        should produce files a.out.js and a.out.wasm in upstream/emscripten
+        rename these to hello.js and wasm and edit a.out.wasm inside hello.js to hello.wasm
+        and copy to mos-s.io/wasm/
+        Then run mos-s.io/wasm/hello.html
+
+    
+TODO
+    Move helloWorld.cpp to this folder
+    Make a build.bat as follows:
+
+    pushd
+    copy helloWorld.cpp cd c:/emsdk/upstream/emscripten/tests/temp
+    cd c:/emsdk/upstream/emscripten
+    emcc -O3 -s WASM=1 -s EXTRA_EXPORTED_RUNTIME_METHODS='["cwrap"]' ./tests/temp/helloWorld.cpp
+    popd
+    copy c:/emsdk/upstream/emscripten/a.out.*  .
+
