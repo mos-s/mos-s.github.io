@@ -1,3 +1,5 @@
+
+
 // The Module object: Our interface to the outside world. We import
 // and export values on it. There are various ways Module can be used:
 // 1. Not defined. We create it here
@@ -12,6 +14,8 @@
 // before the code. Then that object will be used in the code, and you
 // can continue to use Module afterwards as well.
 var Module = typeof Module !== 'undefined' ? Module : {};
+
+
 
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
@@ -30,78 +34,84 @@ for (key in Module) {
   }
 }
 
-Module['arguments'] = [];
-Module['thisProgram'] = './this.program';
-Module['quit'] = function(status, toThrow) {
+var arguments_ = [];
+var thisProgram = './this.program';
+var quit_ = function(status, toThrow) {
   throw toThrow;
 };
-Module['preRun'] = [];
-Module['postRun'] = [];
 
-// The environment setup code below is customized to use Module.
-// *** Environment setup code ***
+// Determine the runtime environment we are in. You can customize this by
+// setting the ENVIRONMENT setting at compile time (see settings.js).
+
 var ENVIRONMENT_IS_WEB = false;
 var ENVIRONMENT_IS_WORKER = false;
 var ENVIRONMENT_IS_NODE = false;
 var ENVIRONMENT_IS_SHELL = false;
+ENVIRONMENT_IS_WEB = typeof window === 'object';
+ENVIRONMENT_IS_WORKER = typeof importScripts === 'function';
+// N.b. Electron.js environment is simultaneously a NODE-environment, but
+// also a web environment.
+ENVIRONMENT_IS_NODE = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string';
+ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
 
-// Three configurations we can be running in:
-// 1) We could be the application main() thread running in the main JS UI thread. (ENVIRONMENT_IS_WORKER == false and ENVIRONMENT_IS_PTHREAD == false)
-// 2) We could be the application main() thread proxied to worker. (with Emscripten -s PROXY_TO_WORKER=1) (ENVIRONMENT_IS_WORKER == true, ENVIRONMENT_IS_PTHREAD == false)
-// 3) We could be an application pthread running in a worker. (ENVIRONMENT_IS_WORKER == true and ENVIRONMENT_IS_PTHREAD == true)
 
-if (Module['ENVIRONMENT']) {
-  if (Module['ENVIRONMENT'] === 'WEB') {
-    ENVIRONMENT_IS_WEB = true;
-  } else if (Module['ENVIRONMENT'] === 'WORKER') {
-    ENVIRONMENT_IS_WORKER = true;
-  } else if (Module['ENVIRONMENT'] === 'NODE') {
-    ENVIRONMENT_IS_NODE = true;
-  } else if (Module['ENVIRONMENT'] === 'SHELL') {
-    ENVIRONMENT_IS_SHELL = true;
-  } else {
-    throw new Error('Module[\'ENVIRONMENT\'] value is not valid. must be one of: WEB|WORKER|NODE|SHELL.');
+
+
+// `/` should be present at the end if `scriptDirectory` is not empty
+var scriptDirectory = '';
+function locateFile(path) {
+  if (Module['locateFile']) {
+    return Module['locateFile'](path, scriptDirectory);
   }
-} else {
-  ENVIRONMENT_IS_WEB = typeof window === 'object';
-  ENVIRONMENT_IS_WORKER = typeof importScripts === 'function';
-  ENVIRONMENT_IS_NODE = typeof process === 'object' && typeof require === 'function' && !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_WORKER;
-  ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
+  return scriptDirectory + path;
 }
 
+// Hooks that are implemented differently in different runtime environments.
+var read_,
+    readAsync,
+    readBinary,
+    setWindowTitle;
+
+var nodeFS;
+var nodePath;
 
 if (ENVIRONMENT_IS_NODE) {
-  // Expose functionality in the same simple way that the shells work
-  // Note that we pollute the global namespace here, otherwise we break in node
-  var nodeFS;
-  var nodePath;
-
-  Module['read'] = function shell_read(filename, binary) {
-    var ret;
-    ret = tryParseAsDataURI(filename);
-    if (!ret) {
-      if (!nodeFS) nodeFS = require('fs');
-      if (!nodePath) nodePath = require('path');
-      filename = nodePath['normalize'](filename);
-      ret = nodeFS['readFileSync'](filename);
-    }
-    return binary ? ret : ret.toString();
-  };
-
-  Module['readBinary'] = function readBinary(filename) {
-    var ret = Module['read'](filename, true);
-    if (!ret.buffer) {
-      ret = new Uint8Array(ret);
-    }
-    assert(ret.buffer);
-    return ret;
-  };
-
-  if (process['argv'].length > 1) {
-    Module['thisProgram'] = process['argv'][1].replace(/\\/g, '/');
+  if (ENVIRONMENT_IS_WORKER) {
+    scriptDirectory = require('path').dirname(scriptDirectory) + '/';
+  } else {
+    scriptDirectory = __dirname + '/';
   }
 
-  Module['arguments'] = process['argv'].slice(2);
+
+
+
+read_ = function shell_read(filename, binary) {
+  var ret = tryParseAsDataURI(filename);
+  if (ret) {
+    return binary ? ret : ret.toString();
+  }
+  if (!nodeFS) nodeFS = require('fs');
+  if (!nodePath) nodePath = require('path');
+  filename = nodePath['normalize'](filename);
+  return nodeFS['readFileSync'](filename, binary ? null : 'utf8');
+};
+
+readBinary = function readBinary(filename) {
+  var ret = read_(filename, true);
+  if (!ret.buffer) {
+    ret = new Uint8Array(ret);
+  }
+  assert(ret.buffer);
+  return ret;
+};
+
+
+
+  if (process['argv'].length > 1) {
+    thisProgram = process['argv'][1].replace(/\\/g, '/');
+  }
+
+  arguments_ = process['argv'].slice(2);
 
   if (typeof module !== 'undefined') {
     module['exports'] = Module;
@@ -113,17 +123,23 @@ if (ENVIRONMENT_IS_NODE) {
       throw ex;
     }
   });
-  // Currently node will swallow unhandled rejections, but this behavior is
-  // deprecated, and in the future it will exit with error status.
-  process['on']('unhandledRejection', function(reason, p) {
-    process['exit'](1);
-  });
+
+  process['on']('unhandledRejection', abort);
+
+  quit_ = function(status) {
+    process['exit'](status);
+  };
 
   Module['inspect'] = function () { return '[Emscripten Module object]'; };
-}
-else if (ENVIRONMENT_IS_SHELL) {
+
+
+
+} else
+if (ENVIRONMENT_IS_SHELL) {
+
+
   if (typeof read != 'undefined') {
-    Module['read'] = function shell_read(f) {
+    read_ = function shell_read(f) {
       var data = tryParseAsDataURI(f);
       if (data) {
         return intArrayToString(data);
@@ -132,7 +148,7 @@ else if (ENVIRONMENT_IS_SHELL) {
     };
   }
 
-  Module['readBinary'] = function readBinary(f) {
+  readBinary = function readBinary(f) {
     var data;
     data = tryParseAsDataURI(f);
     if (data) {
@@ -147,19 +163,55 @@ else if (ENVIRONMENT_IS_SHELL) {
   };
 
   if (typeof scriptArgs != 'undefined') {
-    Module['arguments'] = scriptArgs;
+    arguments_ = scriptArgs;
   } else if (typeof arguments != 'undefined') {
-    Module['arguments'] = arguments;
+    arguments_ = arguments;
   }
 
   if (typeof quit === 'function') {
-    Module['quit'] = function(status, toThrow) {
+    quit_ = function(status) {
       quit(status);
-    }
+    };
   }
-}
-else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
-  Module['read'] = function shell_read(url) {
+
+  if (typeof print !== 'undefined') {
+    // Prefer to use print/printErr where they exist, as they usually work better.
+    if (typeof console === 'undefined') console = /** @type{!Console} */({});
+    console.log = /** @type{!function(this:Console, ...*): undefined} */ (print);
+    console.warn = console.error = /** @type{!function(this:Console, ...*): undefined} */ (typeof printErr !== 'undefined' ? printErr : print);
+  }
+
+
+} else
+
+// Note that this includes Node.js workers when relevant (pthreads is enabled).
+// Node.js workers are detected as a combination of ENVIRONMENT_IS_WORKER and
+// ENVIRONMENT_IS_NODE.
+if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
+  if (ENVIRONMENT_IS_WORKER) { // Check worker, not web, since window could be polyfilled
+    scriptDirectory = self.location.href;
+  } else if (document.currentScript) { // web
+    scriptDirectory = document.currentScript.src;
+  }
+  // blob urls look like blob:http://site.com/etc/etc and we cannot infer anything from them.
+  // otherwise, slice off the final part of the url to find the script directory.
+  // if scriptDirectory does not contain a slash, lastIndexOf will return -1,
+  // and scriptDirectory will correctly be replaced with an empty string.
+  if (scriptDirectory.indexOf('blob:') !== 0) {
+    scriptDirectory = scriptDirectory.substr(0, scriptDirectory.lastIndexOf('/')+1);
+  } else {
+    scriptDirectory = '';
+  }
+
+
+  // Differentiate the Web Worker from the Node Worker case, as reading must
+  // be done differently.
+  {
+
+
+
+
+  read_ = function shell_read(url) {
     try {
       var xhr = new XMLHttpRequest();
       xhr.open('GET', url, false);
@@ -175,13 +227,13 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   };
 
   if (ENVIRONMENT_IS_WORKER) {
-    Module['readBinary'] = function readBinary(url) {
+    readBinary = function readBinary(url) {
       try {
         var xhr = new XMLHttpRequest();
         xhr.open('GET', url, false);
         xhr.responseType = 'arraybuffer';
         xhr.send(null);
-        return new Uint8Array(xhr.response);
+        return new Uint8Array(/** @type{!ArrayBuffer} */(xhr.response));
       } catch (err) {
         var data = tryParseAsDataURI(url);
         if (data) {
@@ -192,7 +244,7 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
     };
   }
 
-  Module['readAsync'] = function readAsync(url, onload, onerror) {
+  readAsync = function readAsync(url, onload, onerror) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
     xhr.responseType = 'arraybuffer';
@@ -212,24 +264,21 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
     xhr.send(null);
   };
 
-  if (typeof arguments != 'undefined') {
-    Module['arguments'] = arguments;
+
+
+
   }
 
-  Module['setWindowTitle'] = function(title) { document.title = title };
+  setWindowTitle = function(title) { document.title = title };
+} else
+{
 }
 
-// console.log is checked first, as 'print' on the web will open a print dialogue
-// printErr is preferable to console.warn (works better in shells)
-// bind(console) is necessary to fix IE/Edge closed dev tools panel behavior.
-Module['print'] = typeof console !== 'undefined' ? console.log.bind(console) : (typeof print !== 'undefined' ? print : null);
-Module['printErr'] = typeof printErr !== 'undefined' ? printErr : ((typeof console !== 'undefined' && console.warn.bind(console)) || Module['print']);
 
-// *** Environment setup code ***
-
-// Closure helpers
-Module.print = Module['print'];
-Module.printErr = Module['printErr'];
+// Set up the out() and err() hooks, which are how we can print to stdout or
+// stderr, respectively.
+var out = Module['print'] || console.log.bind(console);
+var err = Module['printErr'] || console.warn.bind(console);
 
 // Merge back in the overrides
 for (key in moduleOverrides) {
@@ -239,7 +288,19 @@ for (key in moduleOverrides) {
 }
 // Free the object hierarchy contained in the overrides, this lets the GC
 // reclaim data used e.g. in memoryInitializerRequest, which is a large typed array.
-moduleOverrides = undefined;
+moduleOverrides = null;
+
+// Emit code to handle expected values on the Module object. This applies Module.x
+// to the proper local x. This has two benefits: first, we only emit it if it is
+// expected to arrive, and second, by using a local everywhere else that can be
+// minified.
+if (Module['arguments']) arguments_ = Module['arguments'];
+if (Module['thisProgram']) thisProgram = Module['thisProgram'];
+if (Module['quit']) quit_ = Module['quit'];
+
+// perform assertions in shell.js after we set up out() and err(), as otherwise if an assertion fails it cannot print the message
+
+
 
 
 
@@ -247,33 +308,9 @@ moduleOverrides = undefined;
 
 var STACK_ALIGN = 16;
 
-
-function staticAlloc(size) {
-  assert(!staticSealed);
-  var ret = STATICTOP;
-  STATICTOP = (STATICTOP + size + 15) & -16;
-  return ret;
-}
-
-function dynamicAlloc(size) {
-  assert(DYNAMICTOP_PTR);
-  var ret = HEAP32[DYNAMICTOP_PTR>>2];
-  var end = (ret + size + 15) & -16;
-  HEAP32[DYNAMICTOP_PTR>>2] = end;
-  if (end >= TOTAL_MEMORY) {
-    var success = enlargeMemory();
-    if (!success) {
-      HEAP32[DYNAMICTOP_PTR>>2] = ret;
-      return 0;
-    }
-  }
-  return ret;
-}
-
 function alignMemory(size, factor) {
   if (!factor) factor = STACK_ALIGN; // stack alignment (16-byte) by default
-  var ret = size = Math.ceil(size / factor) * factor;
-  return ret;
+  return Math.ceil(size / factor) * factor;
 }
 
 function getNativeTypeSize(type) {
@@ -288,8 +325,8 @@ function getNativeTypeSize(type) {
       if (type[type.length-1] === '*') {
         return 4; // A pointer
       } else if (type[0] === 'i') {
-        var bits = parseInt(type.substr(1));
-        assert(bits % 8 === 0);
+        var bits = Number(type.substr(1));
+        assert(bits % 8 === 0, 'getNativeTypeSize invalid bits ' + bits + ', type ' + type);
         return bits / 8;
       } else {
         return 0;
@@ -302,87 +339,205 @@ function warnOnce(text) {
   if (!warnOnce.shown) warnOnce.shown = {};
   if (!warnOnce.shown[text]) {
     warnOnce.shown[text] = 1;
-    Module.printErr(text);
+    err(text);
   }
 }
 
 
 
-var jsCallStartIndex = 1;
-var functionPointers = new Array(0);
 
-// 'sig' parameter is only used on LLVM wasm backend
-function addFunction(func, sig) {
-  var base = 0;
-  for (var i = base; i < base + 0; i++) {
-    if (!functionPointers[i]) {
-      functionPointers[i] = func;
-      return jsCallStartIndex + i;
+
+// Wraps a JS function as a wasm function with a given signature.
+function convertJsFunctionToWasm(func, sig) {
+
+  // If the type reflection proposal is available, use the new
+  // "WebAssembly.Function" constructor.
+  // Otherwise, construct a minimal wasm module importing the JS function and
+  // re-exporting it.
+  if (typeof WebAssembly.Function === "function") {
+    var typeNames = {
+      'i': 'i32',
+      'j': 'i64',
+      'f': 'f32',
+      'd': 'f64'
+    };
+    var type = {
+      parameters: [],
+      results: sig[0] == 'v' ? [] : [typeNames[sig[0]]]
+    };
+    for (var i = 1; i < sig.length; ++i) {
+      type.parameters.push(typeNames[sig[i]]);
+    }
+    return new WebAssembly.Function(type, func);
+  }
+
+  // The module is static, with the exception of the type section, which is
+  // generated based on the signature passed in.
+  var typeSection = [
+    0x01, // id: section,
+    0x00, // length: 0 (placeholder)
+    0x01, // count: 1
+    0x60, // form: func
+  ];
+  var sigRet = sig.slice(0, 1);
+  var sigParam = sig.slice(1);
+  var typeCodes = {
+    'i': 0x7f, // i32
+    'j': 0x7e, // i64
+    'f': 0x7d, // f32
+    'd': 0x7c, // f64
+  };
+
+  // Parameters, length + signatures
+  typeSection.push(sigParam.length);
+  for (var i = 0; i < sigParam.length; ++i) {
+    typeSection.push(typeCodes[sigParam[i]]);
+  }
+
+  // Return values, length + signatures
+  // With no multi-return in MVP, either 0 (void) or 1 (anything else)
+  if (sigRet == 'v') {
+    typeSection.push(0x00);
+  } else {
+    typeSection = typeSection.concat([0x01, typeCodes[sigRet]]);
+  }
+
+  // Write the overall length of the type section back into the section header
+  // (excepting the 2 bytes for the section id and length)
+  typeSection[1] = typeSection.length - 2;
+
+  // Rest of the module is static
+  var bytes = new Uint8Array([
+    0x00, 0x61, 0x73, 0x6d, // magic ("\0asm")
+    0x01, 0x00, 0x00, 0x00, // version: 1
+  ].concat(typeSection, [
+    0x02, 0x07, // import section
+      // (import "e" "f" (func 0 (type 0)))
+      0x01, 0x01, 0x65, 0x01, 0x66, 0x00, 0x00,
+    0x07, 0x05, // export section
+      // (export "f" (func 0 (type 0)))
+      0x01, 0x01, 0x66, 0x00, 0x00,
+  ]));
+
+   // We can compile this wasm module synchronously because it is very small.
+  // This accepts an import (at "e.f"), that it reroutes to an export (at "f")
+  var module = new WebAssembly.Module(bytes);
+  var instance = new WebAssembly.Instance(module, {
+    'e': {
+      'f': func
+    }
+  });
+  var wrappedFunc = instance.exports['f'];
+  return wrappedFunc;
+}
+
+var freeTableIndexes = [];
+
+// Weak map of functions in the table to their indexes, created on first use.
+var functionsInTableMap;
+
+// Add a wasm function to the table.
+function addFunctionWasm(func, sig) {
+  var table = wasmTable;
+
+  // Check if the function is already in the table, to ensure each function
+  // gets a unique index. First, create the map if this is the first use.
+  if (!functionsInTableMap) {
+    functionsInTableMap = new WeakMap();
+    for (var i = 0; i < table.length; i++) {
+      var item = table.get(i);
+      // Ignore null values.
+      if (item) {
+        functionsInTableMap.set(item, i);
+      }
     }
   }
-  throw 'Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.';
+  if (functionsInTableMap.has(func)) {
+    return functionsInTableMap.get(func);
+  }
+
+  // It's not in the table, add it now.
+
+
+  var ret;
+  // Reuse a free index if there is one, otherwise grow.
+  if (freeTableIndexes.length) {
+    ret = freeTableIndexes.pop();
+  } else {
+    ret = table.length;
+    // Grow the table
+    try {
+      table.grow(1);
+    } catch (err) {
+      if (!(err instanceof RangeError)) {
+        throw err;
+      }
+      throw 'Unable to grow wasm table. Set ALLOW_TABLE_GROWTH.';
+    }
+  }
+
+  // Set the new value.
+  try {
+    // Attempting to call this with JS function will cause of table.set() to fail
+    table.set(ret, func);
+  } catch (err) {
+    if (!(err instanceof TypeError)) {
+      throw err;
+    }
+    var wrapped = convertJsFunctionToWasm(func, sig);
+    table.set(ret, wrapped);
+  }
+
+  functionsInTableMap.set(func, ret);
+
+  return ret;
+}
+
+function removeFunctionWasm(index) {
+  functionsInTableMap.delete(wasmTable.get(index));
+  freeTableIndexes.push(index);
+}
+
+// 'sig' parameter is required for the llvm backend but only when func is not
+// already a WebAssembly function.
+function addFunction(func, sig) {
+
+  return addFunctionWasm(func, sig);
 }
 
 function removeFunction(index) {
-  functionPointers[index-jsCallStartIndex] = null;
+  removeFunctionWasm(index);
 }
 
-var funcWrappers = {};
 
-function getFuncWrapper(func, sig) {
-  if (!func) return; // on null pointer, return undefined
-  assert(sig);
-  if (!funcWrappers[sig]) {
-    funcWrappers[sig] = {};
-  }
-  var sigCache = funcWrappers[sig];
-  if (!sigCache[func]) {
-    // optimize away arguments usage in common cases
-    if (sig.length === 1) {
-      sigCache[func] = function dynCall_wrapper() {
-        return dynCall(sig, func);
-      };
-    } else if (sig.length === 2) {
-      sigCache[func] = function dynCall_wrapper(arg) {
-        return dynCall(sig, func, [arg]);
-      };
-    } else {
-      // general case
-      sigCache[func] = function dynCall_wrapper() {
-        return dynCall(sig, func, Array.prototype.slice.call(arguments));
-      };
-    }
-  }
-  return sigCache[func];
-}
+
+
+
+
+
 
 
 function makeBigInt(low, high, unsigned) {
   return unsigned ? ((+((low>>>0)))+((+((high>>>0)))*4294967296.0)) : ((+((low>>>0)))+((+((high|0)))*4294967296.0));
 }
 
-function dynCall(sig, ptr, args) {
-  if (args && args.length) {
-    return Module['dynCall_' + sig].apply(null, [ptr].concat(args));
-  } else {
-    return Module['dynCall_' + sig].call(null, ptr);
-  }
-}
+var tempRet0 = 0;
 
-
-
-var Runtime = {
-  // FIXME backwards compatibility layer for ports. Support some Runtime.*
-  //       for now, fix it there, then remove it from here. That way we
-  //       can minimize any period of breakage.
-  dynCall: dynCall, // for SDL2 port
+var setTempRet0 = function(value) {
+  tempRet0 = value;
 };
+
+var getTempRet0 = function() {
+  return tempRet0;
+};
+
 
 // The address globals begin at. Very low in memory, for code size and optimization opportunities.
 // Above 0 is static memory, starting with globals.
 // Then the stack.
 // Then 'dynamic' memory for sbrk.
 var GLOBAL_BASE = 1024;
+
 
 
 
@@ -397,100 +552,24 @@ var GLOBAL_BASE = 1024;
 //    is up at http://kripken.github.io/emscripten-site/docs/api_reference/preamble.js.html
 
 
+var wasmBinary;if (Module['wasmBinary']) wasmBinary = Module['wasmBinary'];
+var noExitRuntime;if (Module['noExitRuntime']) noExitRuntime = Module['noExitRuntime'];
 
-//========================================
-// Runtime essentials
-//========================================
 
-var ABORT = 0; // whether we are quitting the application. no code should run after this. set in exit() and abort()
-var EXITSTATUS = 0;
-
-/** @type {function(*, string=)} */
-function assert(condition, text) {
-  if (!condition) {
-    abort('Assertion failed: ' + text);
-  }
+if (typeof WebAssembly !== 'object') {
+  abort('no native wasm support detected');
 }
 
-var globalScope = this;
 
-// Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
-function getCFunc(ident) {
-  var func = Module['_' + ident]; // closure exported function
-  assert(func, 'Cannot call unknown function ' + ident + ', make sure it is exported');
-  return func;
-}
 
-var JSfuncs = {
-  // Helpers for cwrap -- it can't refer to Runtime directly because it might
-  // be renamed by closure, instead it calls JSfuncs['stackSave'].body to find
-  // out what the minified function name is.
-  'stackSave': function() {
-    stackSave()
-  },
-  'stackRestore': function() {
-    stackRestore()
-  },
-  // type conversion from js to c
-  'arrayToC' : function(arr) {
-    var ret = stackAlloc(arr.length);
-    writeArrayToMemory(arr, ret);
-    return ret;
-  },
-  'stringToC' : function(str) {
-    var ret = 0;
-    if (str !== null && str !== undefined && str !== 0) { // null string
-      // at most 4 bytes per UTF-8 code point, +1 for the trailing '\0'
-      var len = (str.length << 2) + 1;
-      ret = stackAlloc(len);
-      stringToUTF8(str, ret, len);
-    }
-    return ret;
-  }
-};
-// For fast lookup of conversion functions
-var toC = {'string' : JSfuncs['stringToC'], 'array' : JSfuncs['arrayToC']};
 
-// C calling interface.
-function ccall (ident, returnType, argTypes, args, opts) {
-  var func = getCFunc(ident);
-  var cArgs = [];
-  var stack = 0;
-  if (args) {
-    for (var i = 0; i < args.length; i++) {
-      var converter = toC[argTypes[i]];
-      if (converter) {
-        if (stack === 0) stack = stackSave();
-        cArgs[i] = converter(args[i]);
-      } else {
-        cArgs[i] = args[i];
-      }
-    }
-  }
-  var ret = func.apply(null, cArgs);
-  if (returnType === 'string') ret = Pointer_stringify(ret);
-  if (stack !== 0) {
-    stackRestore(stack);
-  }
-  return ret;
-}
+// In MINIMAL_RUNTIME, setValue() and getValue() are only available when building with safe heap enabled, for heap safety checking.
+// In traditional runtime, setValue() and getValue() are always available (although their use is highly discouraged due to perf penalties)
 
-function cwrap (ident, returnType, argTypes) {
-  argTypes = argTypes || [];
-  var cfunc = getCFunc(ident);
-  // When the function takes numbers and returns a number, we can just return
-  // the original function
-  var numericArgs = argTypes.every(function(type){ return type === 'number'});
-  var numericRet = returnType !== 'string';
-  if (numericRet && numericArgs) {
-    return cfunc;
-  }
-  return function() {
-    return ccall(ident, returnType, argTypes, arguments);
-  }
-}
-
-/** @type {function(number, number, string, boolean=)} */
+/** @param {number} ptr
+    @param {number} value
+    @param {string} type
+    @param {number|boolean=} noSafe */
 function setValue(ptr, value, type, noSafe) {
   type = type || 'i8';
   if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
@@ -506,7 +585,9 @@ function setValue(ptr, value, type, noSafe) {
     }
 }
 
-/** @type {function(number, string, boolean=)} */
+/** @param {number} ptr
+    @param {string} type
+    @param {number|boolean=} noSafe */
 function getValue(ptr, type, noSafe) {
   type = type || 'i8';
   if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
@@ -523,11 +604,128 @@ function getValue(ptr, type, noSafe) {
   return null;
 }
 
+
+
+
+
+
+// Wasm globals
+
+var wasmMemory;
+
+// In fastcomp asm.js, we don't need a wasm Table at all.
+// In the wasm backend, we polyfill the WebAssembly object,
+// so this creates a (non-native-wasm) table for us.
+
+var wasmTable = new WebAssembly.Table({
+  'initial': 31,
+  'maximum': 31,
+  'element': 'anyfunc'
+});
+
+
+
+
+//========================================
+// Runtime essentials
+//========================================
+
+// whether we are quitting the application. no code should run after this.
+// set in exit() and abort()
+var ABORT = false;
+
+// set by exit() and abort().  Passed to 'onExit' handler.
+// NOTE: This is also used as the process return code code in shell environments
+// but only when noExitRuntime is false.
+var EXITSTATUS = 0;
+
+/** @type {function(*, string=)} */
+function assert(condition, text) {
+  if (!condition) {
+    abort('Assertion failed: ' + text);
+  }
+}
+
+// Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
+function getCFunc(ident) {
+  var func = Module['_' + ident]; // closure exported function
+  assert(func, 'Cannot call unknown function ' + ident + ', make sure it is exported');
+  return func;
+}
+
+// C calling interface.
+/** @param {string|null=} returnType
+    @param {Array=} argTypes
+    @param {Arguments|Array=} args
+    @param {Object=} opts */
+function ccall(ident, returnType, argTypes, args, opts) {
+  // For fast lookup of conversion functions
+  var toC = {
+    'string': function(str) {
+      var ret = 0;
+      if (str !== null && str !== undefined && str !== 0) { // null string
+        // at most 4 bytes per UTF-8 code point, +1 for the trailing '\0'
+        var len = (str.length << 2) + 1;
+        ret = stackAlloc(len);
+        stringToUTF8(str, ret, len);
+      }
+      return ret;
+    },
+    'array': function(arr) {
+      var ret = stackAlloc(arr.length);
+      writeArrayToMemory(arr, ret);
+      return ret;
+    }
+  };
+
+  function convertReturnValue(ret) {
+    if (returnType === 'string') return UTF8ToString(ret);
+    if (returnType === 'boolean') return Boolean(ret);
+    return ret;
+  }
+
+  var func = getCFunc(ident);
+  var cArgs = [];
+  var stack = 0;
+  if (args) {
+    for (var i = 0; i < args.length; i++) {
+      var converter = toC[argTypes[i]];
+      if (converter) {
+        if (stack === 0) stack = stackSave();
+        cArgs[i] = converter(args[i]);
+      } else {
+        cArgs[i] = args[i];
+      }
+    }
+  }
+  var ret = func.apply(null, cArgs);
+
+  ret = convertReturnValue(ret);
+  if (stack !== 0) stackRestore(stack);
+  return ret;
+}
+
+/** @param {string=} returnType
+    @param {Array=} argTypes
+    @param {Object=} opts */
+function cwrap(ident, returnType, argTypes, opts) {
+  argTypes = argTypes || [];
+  // When the function takes numbers and returns a number, we can just return
+  // the original function
+  var numericArgs = argTypes.every(function(type){ return type === 'number'});
+  var numericRet = returnType !== 'string';
+  if (numericRet && numericArgs && !opts) {
+    return getCFunc(ident);
+  }
+  return function() {
+    return ccall(ident, returnType, argTypes, arguments, opts);
+  }
+}
+
+
 var ALLOC_NORMAL = 0; // Tries to use _malloc()
 var ALLOC_STACK = 1; // Lives for the duration of the current function call
-var ALLOC_STATIC = 2; // Cannot be freed
-var ALLOC_DYNAMIC = 3; // Cannot be freed except through sbrk
-var ALLOC_NONE = 4; // Do not allocate
+var ALLOC_NONE = 2; // Do not allocate
 
 // allocate(): This is for internal use. You can use it yourself as well, but the interface
 //             is a little tricky (see docs right below). The reason is that it is optimized
@@ -559,7 +757,9 @@ function allocate(slab, types, allocator, ptr) {
   if (allocator == ALLOC_NONE) {
     ret = ptr;
   } else {
-    ret = [typeof _malloc === 'function' ? _malloc : staticAlloc, stackAlloc, staticAlloc, dynamicAlloc][allocator === undefined ? ALLOC_STATIC : allocator](Math.max(size, singleType ? 1 : types.length));
+    ret = [_malloc,
+    stackAlloc,
+    ][allocator](Math.max(size, singleType ? 1 : types.length));
   }
 
   if (zeroinit) {
@@ -611,105 +811,50 @@ function allocate(slab, types, allocator, ptr) {
   return ret;
 }
 
-// Allocate memory during any stage of startup - static memory early on, dynamic memory later, malloc when ready
-function getMemory(size) {
-  if (!staticSealed) return staticAlloc(size);
-  if (!runtimeInitialized) return dynamicAlloc(size);
-  return _malloc(size);
-}
 
-/** @type {function(number, number=)} */
-function Pointer_stringify(ptr, length) {
-  if (length === 0 || !ptr) return '';
-  // TODO: use TextDecoder
-  // Find the length, and check for UTF while doing so
-  var hasUtf = 0;
-  var t;
-  var i = 0;
-  while (1) {
-    t = HEAPU8[(((ptr)+(i))>>0)];
-    hasUtf |= t;
-    if (t == 0 && !length) break;
-    i++;
-    if (length && i == length) break;
-  }
-  if (!length) length = i;
 
-  var ret = '';
 
-  if (hasUtf < 128) {
-    var MAX_CHUNK = 1024; // split up into chunks, because .apply on a huge string can overflow the stack
-    var curr;
-    while (length > 0) {
-      curr = String.fromCharCode.apply(String, HEAPU8.subarray(ptr, ptr + Math.min(length, MAX_CHUNK)));
-      ret = ret ? ret + curr : curr;
-      ptr += MAX_CHUNK;
-      length -= MAX_CHUNK;
-    }
-    return ret;
-  }
-  return UTF8ToString(ptr);
-}
-
-// Given a pointer 'ptr' to a null-terminated ASCII-encoded string in the emscripten HEAP, returns
-// a copy of that string as a Javascript String object.
-
-function AsciiToString(ptr) {
-  var str = '';
-  while (1) {
-    var ch = HEAP8[((ptr++)>>0)];
-    if (!ch) return str;
-    str += String.fromCharCode(ch);
-  }
-}
-
-// Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
-// null-terminated and encoded in ASCII form. The copy will require at most str.length+1 bytes of space in the HEAP.
-
-function stringToAscii(str, outPtr) {
-  return writeAsciiToMemory(str, outPtr, false);
-}
+// runtime_strings.js: Strings related runtime functions that are part of both MINIMAL_RUNTIME and regular runtime.
 
 // Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the given array that contains uint8 values, returns
 // a copy of that string as a Javascript String object.
 
 var UTF8Decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder('utf8') : undefined;
-function UTF8ArrayToString(u8Array, idx) {
+
+/**
+ * @param {number} idx
+ * @param {number=} maxBytesToRead
+ * @return {string}
+ */
+function UTF8ArrayToString(heap, idx, maxBytesToRead) {
+  var endIdx = idx + maxBytesToRead;
   var endPtr = idx;
   // TextDecoder needs to know the byte length in advance, it doesn't stop on null terminator by itself.
   // Also, use the length info to avoid running tiny strings through TextDecoder, since .subarray() allocates garbage.
-  while (u8Array[endPtr]) ++endPtr;
+  // (As a tiny code save trick, compare endPtr against endIdx using a negation, so that undefined means Infinity)
+  while (heap[endPtr] && !(endPtr >= endIdx)) ++endPtr;
 
-  if (endPtr - idx > 16 && u8Array.subarray && UTF8Decoder) {
-    return UTF8Decoder.decode(u8Array.subarray(idx, endPtr));
+  if (endPtr - idx > 16 && heap.subarray && UTF8Decoder) {
+    return UTF8Decoder.decode(heap.subarray(idx, endPtr));
   } else {
-    var u0, u1, u2, u3, u4, u5;
-
     var str = '';
-    while (1) {
-      // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description and https://www.ietf.org/rfc/rfc2279.txt and https://tools.ietf.org/html/rfc3629
-      u0 = u8Array[idx++];
-      if (!u0) return str;
+    // If building with TextDecoder, we have already computed the string length above, so test loop end condition against that
+    while (idx < endPtr) {
+      // For UTF8 byte structure, see:
+      // http://en.wikipedia.org/wiki/UTF-8#Description
+      // https://www.ietf.org/rfc/rfc2279.txt
+      // https://tools.ietf.org/html/rfc3629
+      var u0 = heap[idx++];
       if (!(u0 & 0x80)) { str += String.fromCharCode(u0); continue; }
-      u1 = u8Array[idx++] & 63;
+      var u1 = heap[idx++] & 63;
       if ((u0 & 0xE0) == 0xC0) { str += String.fromCharCode(((u0 & 31) << 6) | u1); continue; }
-      u2 = u8Array[idx++] & 63;
+      var u2 = heap[idx++] & 63;
       if ((u0 & 0xF0) == 0xE0) {
         u0 = ((u0 & 15) << 12) | (u1 << 6) | u2;
       } else {
-        u3 = u8Array[idx++] & 63;
-        if ((u0 & 0xF8) == 0xF0) {
-          u0 = ((u0 & 7) << 18) | (u1 << 12) | (u2 << 6) | u3;
-        } else {
-          u4 = u8Array[idx++] & 63;
-          if ((u0 & 0xFC) == 0xF8) {
-            u0 = ((u0 & 3) << 24) | (u1 << 18) | (u2 << 12) | (u3 << 6) | u4;
-          } else {
-            u5 = u8Array[idx++] & 63;
-            u0 = ((u0 & 1) << 30) | (u1 << 24) | (u2 << 18) | (u3 << 12) | (u4 << 6) | u5;
-          }
-        }
+        u0 = ((u0 & 7) << 18) | (u1 << 12) | (u2 << 6) | (heap[idx++] & 63);
       }
+
       if (u0 < 0x10000) {
         str += String.fromCharCode(u0);
       } else {
@@ -718,13 +863,26 @@ function UTF8ArrayToString(u8Array, idx) {
       }
     }
   }
+  return str;
 }
 
-// Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the emscripten HEAP, returns
-// a copy of that string as a Javascript String object.
-
-function UTF8ToString(ptr) {
-  return UTF8ArrayToString(HEAPU8,ptr);
+// Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the emscripten HEAP, returns a
+// copy of that string as a Javascript String object.
+// maxBytesToRead: an optional length that specifies the maximum number of bytes to read. You can omit
+//                 this parameter to scan the string until the first \0 byte. If maxBytesToRead is
+//                 passed, and the string at [ptr, ptr+maxBytesToReadr[ contains a null byte in the
+//                 middle, then the string will cut short at that byte index (i.e. maxBytesToRead will
+//                 not produce a string of exact length [ptr, ptr+maxBytesToRead[)
+//                 N.B. mixing frequent uses of UTF8ToString() with and without maxBytesToRead may
+//                 throw JS JIT optimizations off, so it is worth to consider consistently using one
+//                 style or the other.
+/**
+ * @param {number} ptr
+ * @param {number=} maxBytesToRead
+ * @return {string}
+ */
+function UTF8ToString(ptr, maxBytesToRead) {
+  return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead) : '';
 }
 
 // Copies the given Javascript String object 'str' to the given byte array at address 'outIdx',
@@ -732,14 +890,15 @@ function UTF8ToString(ptr) {
 // Use the function lengthBytesUTF8 to compute the exact number of bytes (excluding null terminator) that this function will write.
 // Parameters:
 //   str: the Javascript string to copy.
-//   outU8Array: the array to copy to. Each index in this array is assumed to be one 8-byte element.
+//   heap: the array to copy to. Each index in this array is assumed to be one 8-byte element.
 //   outIdx: The starting offset in the array to begin the copying.
-//   maxBytesToWrite: The maximum number of bytes this function can write to the array. This count should include the null
-//                    terminator, i.e. if maxBytesToWrite=1, only the null terminator will be written and nothing else.
+//   maxBytesToWrite: The maximum number of bytes this function can write to the array.
+//                    This count should include the null terminator,
+//                    i.e. if maxBytesToWrite=1, only the null terminator will be written and nothing else.
 //                    maxBytesToWrite=0 does not write any bytes to the output, not even the null terminator.
 // Returns the number of bytes written, EXCLUDING the null terminator.
 
-function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite) {
+function stringToUTF8Array(str, heap, outIdx, maxBytesToWrite) {
   if (!(maxBytesToWrite > 0)) // Parameter maxBytesToWrite is not optional. Negative values, 0, null, undefined and false each don't write out any bytes.
     return 0;
 
@@ -750,44 +909,32 @@ function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite) {
     // See http://unicode.org/faq/utf_bom.html#utf16-3
     // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description and https://www.ietf.org/rfc/rfc2279.txt and https://tools.ietf.org/html/rfc3629
     var u = str.charCodeAt(i); // possibly a lead surrogate
-    if (u >= 0xD800 && u <= 0xDFFF) u = 0x10000 + ((u & 0x3FF) << 10) | (str.charCodeAt(++i) & 0x3FF);
+    if (u >= 0xD800 && u <= 0xDFFF) {
+      var u1 = str.charCodeAt(++i);
+      u = 0x10000 + ((u & 0x3FF) << 10) | (u1 & 0x3FF);
+    }
     if (u <= 0x7F) {
       if (outIdx >= endIdx) break;
-      outU8Array[outIdx++] = u;
+      heap[outIdx++] = u;
     } else if (u <= 0x7FF) {
       if (outIdx + 1 >= endIdx) break;
-      outU8Array[outIdx++] = 0xC0 | (u >> 6);
-      outU8Array[outIdx++] = 0x80 | (u & 63);
+      heap[outIdx++] = 0xC0 | (u >> 6);
+      heap[outIdx++] = 0x80 | (u & 63);
     } else if (u <= 0xFFFF) {
       if (outIdx + 2 >= endIdx) break;
-      outU8Array[outIdx++] = 0xE0 | (u >> 12);
-      outU8Array[outIdx++] = 0x80 | ((u >> 6) & 63);
-      outU8Array[outIdx++] = 0x80 | (u & 63);
-    } else if (u <= 0x1FFFFF) {
-      if (outIdx + 3 >= endIdx) break;
-      outU8Array[outIdx++] = 0xF0 | (u >> 18);
-      outU8Array[outIdx++] = 0x80 | ((u >> 12) & 63);
-      outU8Array[outIdx++] = 0x80 | ((u >> 6) & 63);
-      outU8Array[outIdx++] = 0x80 | (u & 63);
-    } else if (u <= 0x3FFFFFF) {
-      if (outIdx + 4 >= endIdx) break;
-      outU8Array[outIdx++] = 0xF8 | (u >> 24);
-      outU8Array[outIdx++] = 0x80 | ((u >> 18) & 63);
-      outU8Array[outIdx++] = 0x80 | ((u >> 12) & 63);
-      outU8Array[outIdx++] = 0x80 | ((u >> 6) & 63);
-      outU8Array[outIdx++] = 0x80 | (u & 63);
+      heap[outIdx++] = 0xE0 | (u >> 12);
+      heap[outIdx++] = 0x80 | ((u >> 6) & 63);
+      heap[outIdx++] = 0x80 | (u & 63);
     } else {
-      if (outIdx + 5 >= endIdx) break;
-      outU8Array[outIdx++] = 0xFC | (u >> 30);
-      outU8Array[outIdx++] = 0x80 | ((u >> 24) & 63);
-      outU8Array[outIdx++] = 0x80 | ((u >> 18) & 63);
-      outU8Array[outIdx++] = 0x80 | ((u >> 12) & 63);
-      outU8Array[outIdx++] = 0x80 | ((u >> 6) & 63);
-      outU8Array[outIdx++] = 0x80 | (u & 63);
+      if (outIdx + 3 >= endIdx) break;
+      heap[outIdx++] = 0xF0 | (u >> 18);
+      heap[outIdx++] = 0x80 | ((u >> 12) & 63);
+      heap[outIdx++] = 0x80 | ((u >> 6) & 63);
+      heap[outIdx++] = 0x80 | (u & 63);
     }
   }
   // Null-terminate the pointer to the buffer.
-  outU8Array[outIdx] = 0;
+  heap[outIdx] = 0;
   return outIdx - startIdx;
 }
 
@@ -801,7 +948,6 @@ function stringToUTF8(str, outPtr, maxBytesToWrite) {
 }
 
 // Returns the number of bytes the given Javascript string takes if encoded as a UTF8 byte array, EXCLUDING the null terminator byte.
-
 function lengthBytesUTF8(str) {
   var len = 0;
   for (var i = 0; i < str.length; ++i) {
@@ -809,33 +955,53 @@ function lengthBytesUTF8(str) {
     // See http://unicode.org/faq/utf_bom.html#utf16-3
     var u = str.charCodeAt(i); // possibly a lead surrogate
     if (u >= 0xD800 && u <= 0xDFFF) u = 0x10000 + ((u & 0x3FF) << 10) | (str.charCodeAt(++i) & 0x3FF);
-    if (u <= 0x7F) {
-      ++len;
-    } else if (u <= 0x7FF) {
-      len += 2;
-    } else if (u <= 0xFFFF) {
-      len += 3;
-    } else if (u <= 0x1FFFFF) {
-      len += 4;
-    } else if (u <= 0x3FFFFFF) {
-      len += 5;
-    } else {
-      len += 6;
-    }
+    if (u <= 0x7F) ++len;
+    else if (u <= 0x7FF) len += 2;
+    else if (u <= 0xFFFF) len += 3;
+    else len += 4;
   }
   return len;
+}
+
+
+
+
+
+// runtime_strings_extra.js: Strings related runtime functions that are available only in regular runtime.
+
+// Given a pointer 'ptr' to a null-terminated ASCII-encoded string in the emscripten HEAP, returns
+// a copy of that string as a Javascript String object.
+
+function AsciiToString(ptr) {
+  var str = '';
+  while (1) {
+    var ch = HEAPU8[((ptr++)>>0)];
+    if (!ch) return str;
+    str += String.fromCharCode(ch);
+  }
+}
+
+// Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
+// null-terminated and encoded in ASCII form. The copy will require at most str.length+1 bytes of space in the HEAP.
+
+function stringToAscii(str, outPtr) {
+  return writeAsciiToMemory(str, outPtr, false);
 }
 
 // Given a pointer 'ptr' to a null-terminated UTF16LE-encoded string in the emscripten HEAP, returns
 // a copy of that string as a Javascript String object.
 
 var UTF16Decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder('utf-16le') : undefined;
-function UTF16ToString(ptr) {
+
+function UTF16ToString(ptr, maxBytesToRead) {
   var endPtr = ptr;
   // TextDecoder needs to know the byte length in advance, it doesn't stop on null terminator by itself.
   // Also, use the length info to avoid running tiny strings through TextDecoder, since .subarray() allocates garbage.
   var idx = endPtr >> 1;
-  while (HEAP16[idx]) ++idx;
+  var maxIdx = idx + maxBytesToRead / 2;
+  // If maxBytesToRead is not passed explicitly, it will be undefined, and this
+  // will always evaluate to true. This saves on code size.
+  while (!(idx >= maxIdx) && HEAPU16[idx]) ++idx;
   endPtr = idx << 1;
 
   if (endPtr - ptr > 32 && UTF16Decoder) {
@@ -846,7 +1012,7 @@ function UTF16ToString(ptr) {
     var str = '';
     while (1) {
       var codeUnit = HEAP16[(((ptr)+(i*2))>>1)];
-      if (codeUnit == 0) return str;
+      if (codeUnit == 0 || i == maxBytesToRead / 2) return str;
       ++i;
       // fromCharCode constructs a character from a UTF-16 code unit, so we can pass the UTF16 string right through.
       str += String.fromCharCode(codeUnit);
@@ -891,14 +1057,15 @@ function lengthBytesUTF16(str) {
   return str.length*2;
 }
 
-function UTF32ToString(ptr) {
+function UTF32ToString(ptr, maxBytesToRead) {
   var i = 0;
 
   var str = '';
-  while (1) {
+  // If maxBytesToRead is not passed explicitly, it will be undefined, and this
+  // will always evaluate to true. This saves on code size.
+  while (!(i >= maxBytesToRead / 4)) {
     var utf32 = HEAP32[(((ptr)+(i*4))>>2)];
-    if (utf32 == 0)
-      return str;
+    if (utf32 == 0) break;
     ++i;
     // Gotcha: fromCharCode constructs a character from a UTF-16 encoded code (pair), not from a Unicode code point! So encode the code point to UTF-16 for constructing.
     // See http://unicode.org/faq/utf_bom.html#utf16-3
@@ -909,6 +1076,7 @@ function UTF32ToString(ptr) {
       str += String.fromCharCode(utf32);
     }
   }
+  return str;
 }
 
 // Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
@@ -979,49 +1147,46 @@ function allocateUTF8OnStack(str) {
   return ret;
 }
 
-function demangle(func) {
-  return func;
-}
+// Deprecated: This function should not be called because it is unsafe and does not provide
+// a maximum length limit of how many bytes it is allowed to write. Prefer calling the
+// function stringToUTF8Array() instead, which takes in a maximum length that can be used
+// to be secure from out of bounds writes.
+/** @deprecated
+    @param {boolean=} dontAddNull */
+function writeStringToMemory(string, buffer, dontAddNull) {
+  warnOnce('writeStringToMemory is deprecated and should not be called! Use stringToUTF8() instead!');
 
-function demangleAll(text) {
-  var regex =
-    /__Z[\w\d_]+/g;
-  return text.replace(regex,
-    function(x) {
-      var y = demangle(x);
-      return x === y ? x : (x + ' [' + y + ']');
-    });
-}
-
-function jsStackTrace() {
-  var err = new Error();
-  if (!err.stack) {
-    // IE10+ special cases: It does have callstack info, but it is only populated if an Error object is thrown,
-    // so try that as a special-case.
-    try {
-      throw new Error(0);
-    } catch(e) {
-      err = e;
-    }
-    if (!err.stack) {
-      return '(no stack trace available)';
-    }
+  var /** @type {number} */ lastChar, /** @type {number} */ end;
+  if (dontAddNull) {
+    // stringToUTF8Array always appends null. If we don't want to do that, remember the
+    // character that existed at the location where the null will be placed, and restore
+    // that after the write (below).
+    end = buffer + lengthBytesUTF8(string);
+    lastChar = HEAP8[end];
   }
-  return err.stack.toString();
+  stringToUTF8(string, buffer, Infinity);
+  if (dontAddNull) HEAP8[end] = lastChar; // Restore the value under the null character.
 }
 
-function stackTrace() {
-  var js = jsStackTrace();
-  if (Module['extraStackTrace']) js += '\n' + Module['extraStackTrace']();
-  return demangleAll(js);
+function writeArrayToMemory(array, buffer) {
+  HEAP8.set(array, buffer);
 }
+
+/** @param {boolean=} dontAddNull */
+function writeAsciiToMemory(str, buffer, dontAddNull) {
+  for (var i = 0; i < str.length; ++i) {
+    HEAP8[((buffer++)>>0)]=str.charCodeAt(i);
+  }
+  // Null-terminate the pointer to the HEAP.
+  if (!dontAddNull) HEAP8[((buffer)>>0)]=0;
+}
+
+
 
 // Memory management
 
 var PAGE_SIZE = 16384;
 var WASM_PAGE_SIZE = 65536;
-var ASMJS_PAGE_SIZE = 16777216;
-var MIN_TOTAL_MEMORY = 16777216;
 
 function alignUp(x, multiple) {
   if (x % multiple > 0) {
@@ -1050,138 +1215,120 @@ var HEAP,
 /** @type {Float64Array} */
   HEAPF64;
 
-function updateGlobalBuffer(buf) {
-  Module['buffer'] = buffer = buf;
+function updateGlobalBufferAndViews(buf) {
+  buffer = buf;
+  Module['HEAP8'] = HEAP8 = new Int8Array(buf);
+  Module['HEAP16'] = HEAP16 = new Int16Array(buf);
+  Module['HEAP32'] = HEAP32 = new Int32Array(buf);
+  Module['HEAPU8'] = HEAPU8 = new Uint8Array(buf);
+  Module['HEAPU16'] = HEAPU16 = new Uint16Array(buf);
+  Module['HEAPU32'] = HEAPU32 = new Uint32Array(buf);
+  Module['HEAPF32'] = HEAPF32 = new Float32Array(buf);
+  Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
 }
 
-function updateGlobalBufferViews() {
-  Module['HEAP8'] = HEAP8 = new Int8Array(buffer);
-  Module['HEAP16'] = HEAP16 = new Int16Array(buffer);
-  Module['HEAP32'] = HEAP32 = new Int32Array(buffer);
-  Module['HEAPU8'] = HEAPU8 = new Uint8Array(buffer);
-  Module['HEAPU16'] = HEAPU16 = new Uint16Array(buffer);
-  Module['HEAPU32'] = HEAPU32 = new Uint32Array(buffer);
-  Module['HEAPF32'] = HEAPF32 = new Float32Array(buffer);
-  Module['HEAPF64'] = HEAPF64 = new Float64Array(buffer);
-}
-
-var STATIC_BASE, STATICTOP, staticSealed; // static area
-var STACK_BASE, STACKTOP, STACK_MAX; // stack area
-var DYNAMIC_BASE, DYNAMICTOP_PTR; // dynamic area handled by sbrk
-
-  STATIC_BASE = STATICTOP = STACK_BASE = STACKTOP = STACK_MAX = DYNAMIC_BASE = DYNAMICTOP_PTR = 0;
-  staticSealed = false;
+var STACK_BASE = 5249168,
+    STACKTOP = STACK_BASE,
+    STACK_MAX = 6288,
+    DYNAMIC_BASE = 5249168;
 
 
 
-function abortOnCannotGrowMemory() {
-  abort('Cannot enlarge memory arrays. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
-}
 
+var TOTAL_STACK = 5242880;
 
-function enlargeMemory() {
-  abortOnCannotGrowMemory();
-}
-
-
-var TOTAL_STACK = Module['TOTAL_STACK'] || 5242880;
-var TOTAL_MEMORY = Module['TOTAL_MEMORY'] || 16777216;
-if (TOTAL_MEMORY < TOTAL_STACK) Module.printErr('TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + TOTAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
-
-// Initialize the runtime's memory
+var INITIAL_INITIAL_MEMORY = Module['INITIAL_MEMORY'] || 16777216;
 
 
 
-// Use a provided buffer, if there is one, or else allocate a new one
-if (Module['buffer']) {
-  buffer = Module['buffer'];
-} else {
-  // Use a WebAssembly memory where available
-  if (typeof WebAssembly === 'object' && typeof WebAssembly.Memory === 'function') {
-    Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': TOTAL_MEMORY / WASM_PAGE_SIZE });
-    buffer = Module['wasmMemory'].buffer;
+// In non-standalone/normal mode, we create the memory here.
+
+
+
+// Create the main memory. (Note: this isn't used in STANDALONE_WASM mode since the wasm
+// memory is created in the wasm, not in JS.)
+
+  if (Module['wasmMemory']) {
+    wasmMemory = Module['wasmMemory'];
   } else
   {
-    buffer = new ArrayBuffer(TOTAL_MEMORY);
+    wasmMemory = new WebAssembly.Memory({
+      'initial': INITIAL_INITIAL_MEMORY / WASM_PAGE_SIZE
+      ,
+      'maximum': INITIAL_INITIAL_MEMORY / WASM_PAGE_SIZE
+    });
   }
-  Module['buffer'] = buffer;
-}
-updateGlobalBufferViews();
 
 
-function getTotalMemory() {
-  return TOTAL_MEMORY;
+if (wasmMemory) {
+  buffer = wasmMemory.buffer;
 }
 
-// Endianness check (note: assumes compiler arch was little-endian)
-  HEAP32[0] = 0x63736d65; /* 'emsc' */
-HEAP16[1] = 0x6373;
-if (HEAPU8[2] !== 0x73 || HEAPU8[3] !== 0x63) throw 'Runtime error: expected the system to be little-endian!';
+// If the user provides an incorrect length, just use that length instead rather than providing the user to
+// specifically provide the memory length with Module['INITIAL_MEMORY'].
+INITIAL_INITIAL_MEMORY = buffer.byteLength;
+updateGlobalBufferAndViews(buffer);
 
-function callRuntimeCallbacks(callbacks) {
-  while(callbacks.length > 0) {
-    var callback = callbacks.shift();
-    if (typeof callback == 'function') {
-      callback();
-      continue;
-    }
-    var func = callback.func;
-    if (typeof func === 'number') {
-      if (callback.arg === undefined) {
-        Module['dynCall_v'](func);
-      } else {
-        Module['dynCall_vi'](func, callback.arg);
-      }
-    } else {
-      func(callback.arg === undefined ? null : callback.arg);
-    }
-  }
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 var __ATPRERUN__  = []; // functions called before the runtime is initialized
 var __ATINIT__    = []; // functions called during startup
 var __ATMAIN__    = []; // functions called when main() is to be run
 var __ATEXIT__    = []; // functions called during shutdown
-var __ATPOSTRUN__ = []; // functions called after the runtime has exited
+var __ATPOSTRUN__ = []; // functions called after the main() is called
 
 var runtimeInitialized = false;
 var runtimeExited = false;
 
 
 function preRun() {
-  // compatibility - merge in anything from Module['preRun'] at this time
+
   if (Module['preRun']) {
     if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
     while (Module['preRun'].length) {
       addOnPreRun(Module['preRun'].shift());
     }
   }
+
   callRuntimeCallbacks(__ATPRERUN__);
 }
 
-function ensureInitRuntime() {
-  if (runtimeInitialized) return;
+function initRuntime() {
   runtimeInitialized = true;
+  
   callRuntimeCallbacks(__ATINIT__);
 }
 
 function preMain() {
+  
   callRuntimeCallbacks(__ATMAIN__);
 }
 
 function exitRuntime() {
-  callRuntimeCallbacks(__ATEXIT__);
   runtimeExited = true;
 }
 
 function postRun() {
-  // compatibility - merge in anything from Module['postRun'] at this time
+
   if (Module['postRun']) {
     if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
     while (Module['postRun'].length) {
       addOnPostRun(Module['postRun'].shift());
     }
   }
+
   callRuntimeCallbacks(__ATPOSTRUN__);
 }
 
@@ -1198,65 +1345,22 @@ function addOnPreMain(cb) {
 }
 
 function addOnExit(cb) {
-  __ATEXIT__.unshift(cb);
 }
 
 function addOnPostRun(cb) {
   __ATPOSTRUN__.unshift(cb);
 }
 
-// Deprecated: This function should not be called because it is unsafe and does not provide
-// a maximum length limit of how many bytes it is allowed to write. Prefer calling the
-// function stringToUTF8Array() instead, which takes in a maximum length that can be used
-// to be secure from out of bounds writes.
-/** @deprecated */
-function writeStringToMemory(string, buffer, dontAddNull) {
-  warnOnce('writeStringToMemory is deprecated and should not be called! Use stringToUTF8() instead!');
 
-  var /** @type {number} */ lastChar, /** @type {number} */ end;
-  if (dontAddNull) {
-    // stringToUTF8Array always appends null. If we don't want to do that, remember the
-    // character that existed at the location where the null will be placed, and restore
-    // that after the write (below).
-    end = buffer + lengthBytesUTF8(string);
-    lastChar = HEAP8[end];
-  }
-  stringToUTF8(string, buffer, Infinity);
-  if (dontAddNull) HEAP8[end] = lastChar; // Restore the value under the null character.
-}
 
-function writeArrayToMemory(array, buffer) {
-  HEAP8.set(array, buffer);
-}
 
-function writeAsciiToMemory(str, buffer, dontAddNull) {
-  for (var i = 0; i < str.length; ++i) {
-    HEAP8[((buffer++)>>0)]=str.charCodeAt(i);
-  }
-  // Null-terminate the pointer to the HEAP.
-  if (!dontAddNull) HEAP8[((buffer)>>0)]=0;
-}
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/imul
 
-function unSign(value, bits, ignore) {
-  if (value >= 0) {
-    return value;
-  }
-  return bits <= 32 ? 2*Math.abs(1 << (bits-1)) + value // Need some trickery, since if bits == 32, we are right at the limit of the bits JS uses in bitshifts
-                    : Math.pow(2, bits)         + value;
-}
-function reSign(value, bits, ignore) {
-  if (value <= 0) {
-    return value;
-  }
-  var half = bits <= 32 ? Math.abs(1 << (bits-1)) // abs is needed if bits == 32
-                        : Math.pow(2, bits-1);
-  if (value >= half && (bits <= 32 || value > half)) { // for huge values, we can hit the precision limit and always get true here. so don't do that
-                                                       // but, in general there is no perfect solution here. With 64-bit ints, we get rounding and errors
-                                                       // TODO: In i64 mode 1, resign the two parts separately and safely
-    value = -2*half + value; // Cannot bitshift half, as it may be at the limit of the bits JS uses in bitshifts
-  }
-  return value;
-}
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/fround
+
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/clz32
+
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/trunc
 
 
 var Math_abs = Math.abs;
@@ -1281,10 +1385,12 @@ var Math_max = Math.max;
 var Math_clz32 = Math.clz32;
 var Math_trunc = Math.trunc;
 
+
+
 // A counter of dependencies for calling run(). If we need to
 // do asynchronous work before running, increment this and
 // decrement it. Incrementing must happen in a place like
-// PRE_RUN_ADDITIONS (used by emcc to add file preloading).
+// Module.preRun (used by emcc to add file preloading).
 // Note that you can add dependencies in preRun, even though
 // it happens right before run - run will be postponed until
 // the dependencies are met.
@@ -1298,16 +1404,20 @@ function getUniqueRunDependency(id) {
 
 function addRunDependency(id) {
   runDependencies++;
+
   if (Module['monitorRunDependencies']) {
     Module['monitorRunDependencies'](runDependencies);
   }
+
 }
 
 function removeRunDependency(id) {
   runDependencies--;
+
   if (Module['monitorRunDependencies']) {
     Module['monitorRunDependencies'](runDependencies);
   }
+
   if (runDependencies == 0) {
     if (runDependencyWatcher !== null) {
       clearInterval(runDependencyWatcher);
@@ -1324,7 +1434,30 @@ function removeRunDependency(id) {
 Module["preloadedImages"] = {}; // maps url to image data
 Module["preloadedAudios"] = {}; // maps url to audio data
 
+/** @param {string|number=} what */
+function abort(what) {
+  if (Module['onAbort']) {
+    Module['onAbort'](what);
+  }
 
+  what += '';
+  err(what);
+
+  ABORT = true;
+  EXITSTATUS = 1;
+
+  what = 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
+
+  // Use a wasm runtime error, because a JS error might be seen as a foreign
+  // exception, which means we'd run destructors on it. We need the error to
+  // simply make the program stop.
+  var e = new WebAssembly.RuntimeError(what);
+
+  // Throw the error whether or not MODULARIZE is set because abort is used
+  // in code paths apart from instantiation where an exception is expected
+  // to be thrown when abort is called.
+  throw e;
+}
 
 var memoryInitializer = null;
 
@@ -1333,418 +1466,252 @@ var memoryInitializer = null;
 
 
 
+
+
+
+
+
+function hasPrefix(str, prefix) {
+  return String.prototype.startsWith ?
+      str.startsWith(prefix) :
+      str.indexOf(prefix) === 0;
+}
+
 // Prefix of data URIs emitted by SINGLE_FILE and related options.
 var dataURIPrefix = 'data:application/octet-stream;base64,';
 
 // Indicates whether filename is a base64 data URI.
 function isDataURI(filename) {
-  return String.prototype.startsWith ?
-      filename.startsWith(dataURIPrefix) :
-      filename.indexOf(dataURIPrefix) === 0;
+  return hasPrefix(filename, dataURIPrefix);
+}
+
+var fileURIPrefix = "file://";
+
+// Indicates whether filename is delivered via file protocol (as opposed to http/https)
+function isFileURI(filename) {
+  return hasPrefix(filename, fileURIPrefix);
 }
 
 
 
 
-function integrateWasmJS() {
-  // wasm.js has several methods for creating the compiled code module here:
-  //  * 'native-wasm' : use native WebAssembly support in the browser
-  //  * 'interpret-s-expr': load s-expression code from a .wast and interpret
-  //  * 'interpret-binary': load binary wasm and interpret
-  //  * 'interpret-asm2wasm': load asm.js code, translate to wasm, and interpret
-  //  * 'asmjs': no wasm, just load the asm.js code and use that (good for testing)
-  // The method is set at compile time (BINARYEN_METHOD)
-  // The method can be a comma-separated list, in which case, we will try the
-  // options one by one. Some of them can fail gracefully, and then we can try
-  // the next.
 
-  // inputs
+var wasmBinaryFile = 'data:application/octet-stream;base64,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SA0AIAAgAU0NAQsCQCAAPwBBEHRNDQAgABAMRQ0BC0EAIAA2AsAhIAEPCxDlAUEwNgIAQX8LkQQBA38CQCACQYAESQ0AIAAgASACEA0aIAAPCyAAIAJqIQMCQAJAIAEgAHNBA3ENAAJAAkAgAkEBTg0AIAAhAgwBCwJAIABBA3ENACAAIQIMAQsgACECA0AgAiABLQAAOgAAIAFBAWohASACQQFqIgIgA08NASACQQNxDQALCwJAIANBfHEiBEHAAEkNACACIARBQGoiBUsNAANAIAIgASgCADYCACACIAEoAgQ2AgQgAiABKAIINgIIIAIgASgCDDYCDCACIAEoAhA2AhAgAiABKAIUNgIUIAIgASgCGDYCGCACIAEoAhw2AhwgAiABKAIgNgIgIAIgASgCJDYCJCACIAEoAig2AiggAiABKAIsNgIsIAIgASgCMDYCMCACIAEoAjQ2AjQgAiABKAI4NgI4IAIgASgCPDYCPCABQcAAaiEBIAJBwABqIgIgBU0NAAsLIAIgBE8NAQNAIAIgASgCADYCACABQQRqIQEgAkEEaiICIARJDQAMAgsACwJAIANBBE8NACAAIQIMAQsCQCADQXxqIgQgAE8NACAAIQIMAQsgACECA0AgAiABLQAAOgAAIAIgAS0AAToAASACIAEtAAI6AAIgAiABLQADOgADIAFBBGohASACQQRqIgIgBE0NAAsLAkAgAiADTw0AA0AgAiABLQAAOgAAIAFBAWohASACQQFqIgIgA0cNAAsLIAAL8wICA38BfgJAIAJFDQAgAiAAaiIDQX9qIAE6AAAgACABOgAAIAJBA0kNACADQX5qIAE6AAAgACABOgABIANBfWogAToAACAAIAE6AAIgAkEHSQ0AIANBfGogAToAACAAIAE6AAMgAkEJSQ0AIABBACAAa0EDcSIEaiIDIAFB/wFxQYGChAhsIgE2AgAgAyACIARrQXxxIgRqIgJBfGogATYCACAEQQlJDQAgAyABNgIIIAMgATYCBCACQXhqIAE2AgAgAkF0aiABNgIAIARBGUkNACADIAE2AhggAyABNgIUIAMgATYCECADIAE2AgwgAkFwaiABNgIAIAJBbGogATYCACACQWhqIAE2AgAgAkFkaiABNgIAIAQgA0EEcUEYciIFayICQSBJDQAgAa0iBkIghiAGhCEGIAMg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bnQAbG9uZwB1bnNpZ25lZCBsb25nAGZsb2F0AGRvdWJsZQBzdGQ6OnN0cmluZwBzdGQ6OmJhc2ljX3N0cmluZzx1bnNpZ25lZCBjaGFyPgBzdGQ6OndzdHJpbmcAc3RkOjp1MTZzdHJpbmcAc3RkOjp1MzJzdHJpbmcAZW1zY3JpcHRlbjo6dmFsAGVtc2NyaXB0ZW46Om1lbW9yeV92aWV3PGNoYXI+AGVtc2NyaXB0ZW46Om1lbW9yeV92aWV3PHNpZ25lZCBjaGFyPgBlbXNjcmlwdGVuOjptZW1vcnlfdmlldzx1bnNpZ25lZCBjaGFyPgBlbXNjcmlwdGVuOjptZW1vcnlfdmlldzxzaG9ydD4AZW1zY3JpcHRlbjo6bWVtb3J5X3ZpZXc8dW5zaWduZWQgc2hvcnQ+AGVtc2NyaXB0ZW46Om1lbW9yeV92aWV3PGludD4AZW1zY3JpcHRlbjo6bWVtb3J5X3ZpZXc8dW5zaWduZWQgaW50PgBlbXNjcmlwdGVuOjptZW1vcnlfdmlldzxsb25nPgBlbXNjcmlwdGVuOjptZW1vcnlfdmlldzx1bnNpZ25lZCBsb25nPgBlbXNjcmlwdGVuOjptZW1vcnlfdmlldzxpbnQ4X3Q+AGVtc2NyaXB0ZW46Om1lbW9yeV92aWV3PHVpbnQ4X3Q+AGVtc2NyaXB0ZW46Om1lbW9yeV92aWV3PGludDE2X3Q+AGVtc2NyaXB0ZW46Om1lbW9yeV92aWV3PHVpbnQxNl90PgBlbXNjcmlwdGVuOjptZW1vcnlfdmlldzxpbnQzMl90PgBlbXNjcmlwdGVuOjptZW1vcnlfdmlldzx1aW50MzJfdD4AZW1zY3JpcHRlbjo6bWVtb3J5X3ZpZXc8ZmxvYXQ+AGVtc2NyaXB0ZW46Om1lbW9yeV92aWV3PGRvdWJsZT4ATlN0M19fMjEyYmFzaWNfc3RyaW5nSWNOU18xMWNoYXJfdHJhaXRzSWNFRU5TXzlhbGxvY2F0b3JJY0VFRUUATlN0M19fMjIxX19iYXNpY19zdHJpbmdfY29tbW9uSUxiMUVFRQAAAMwNAAAACAAAUA4AAMEHAAAAAAAAAQAAACgIAAAAAAAATlN0M19fMjEyYmFzaWNfc3RyaW5nSWhOU18xMWNoYXJfdHJhaXRzSWhFRU5TXzlhbGxvY2F0b3JJaEVFRUUAAFAOAABICAAAAAAAAAEAAAAoCAAAAAAAAE5TdDNfXzIxMmJhc2ljX3N0cmluZ0l3TlNfMTFjaGFyX3RyYWl0c0l3RUVOU185YWxsb2NhdG9ySXdFRUVFAABQDgAAoAgAAAAAAAABAAAAKAgAAAAAAABOU3QzX18yMTJiYXNpY19zdHJpbmdJRHNOU18xMWNoYXJfdHJhaXRzSURzRUVOU185YWxsb2NhdG9ySURzRUVFRQAAAFAOAAD4CAAAAAAAAAEAAAAoCAAAAAAAAE5TdDNfXzIxMmJhc2ljX3N0cmluZ0lEaU5TXzExY2hhcl90cmFpdHNJRGlFRU5TXzlhbGxvY2F0b3JJRGlFRUVFAAAAUA4AAFQJAAAAAAAAAQAAACgIAAAAAAAATjEwZW1zY3JpcHRlbjN2YWxFAADMDQAAsAkAAE4xMGVtc2NyaXB0ZW4xMW1lbW9yeV92aWV3SWNFRQAAzA0AAMwJAABOMTBlbXNjcmlwdGVuMTFtZW1vcnlfdmlld0lhRUUAAMwNAAD0CQAATjEwZW1zY3JpcHRlbjExbWVtb3J5X3ZpZXdJaEVFAADMDQAAHAoAAE4xMGVtc2NyaXB0ZW4xMW1lbW9yeV92aWV3SXNFRQAAzA0AAEQKAABOMTBlbXNjcmlwdGVuMTFtZW1vcnlfdmlld0l0RUUAAMwNAABsCgAATjEwZW1zY3JpcHRlbjExbWVtb3J5X3ZpZXdJaUVFAADMDQAAlAoAAE4xMGVtc2NyaXB0ZW4xMW1lbW9yeV92aWV3SWpFRQAAzA0AALwKAABOMTBlbXNjcmlwdGVuMTFtZW1vcnlfdmlld0lsRUUAAMwNAADkCgAATjEwZW1zY3JpcHRlbjExbWVtb3J5X3ZpZXdJbUVFAADMDQAADAsAAE4xMGVtc2NyaXB0ZW4xMW1lbW9yeV92aWV3SWZFRQAAzA0AADQLAABOMTBlbXNjcmlwdGVuMTFtZW1vcnlfdmlld0lkRUUAAMwNAABcCwAAU3Q5dHlwZV9pbmZvAAAAAMwNAACECwAATjEwX19jeHhhYml2MTE2X19zaGltX3R5cGVfaW5mb0UAAAAA9A0AAJwLAACUCwAATjEwX19jeHhhYml2MTE3X19jbGFzc190eXBlX2luZm9FAAAA9A0AAMwLAADACwAATjEwX19jeHhhYml2MTE3X19wYmFzZV90eXBlX2luZm9FAAAA9A0AAPwLAADACwAATjEwX19jeHhhYml2MTE5X19wb2ludGVyX3R5cGVfaW5mb0UA9A0AACwMAAAgDAAATjEwX19jeHhhYml2MTIwX19mdW5jdGlvbl90eXBlX2luZm9FAAAAAPQNAABcDAAAwAsAAE4xMF9fY3h4YWJpdjEyOV9fcG9pbnRlcl90b19tZW1iZXJfdHlwZV9pbmZvRQAAAPQNAACQDAAAIAwAAAAAAAAQDQAACAAAAAkAAAAKAAAACwAAAAwAAABOMTBfX2N4eGFiaXYxMjNfX2Z1bmRhbWVudGFsX3R5cGVfaW5mb0UA9A0AAOgMAADACwAAdgAAANQMAAAcDQAARG4AANQMAAAoDQAAYgAAANQMAAA0DQAAYwAAANQMAABADQAAaAAAANQMAABMDQAAYQAAANQMAABYDQAAcwAAANQMAABkDQAAdAAAANQMAABwDQAAaQAAANQMAAB8DQAAagAAANQMAACIDQAAbAAAANQMAACUDQAAbQAAANQMAACgDQAAZgAAANQMAACsDQAAZAAAANQMAAC4DQAAAAAAAPALAAAIAAAADQAAAAoAAAALAAAADgAAAA8AAAAQAAAAEQAAAAAAAAA8DgAACAAAABIAAAAKAAAACwAAAA4AAAATAAAAFAAAABUAAABOMTBfX2N4eGFiaXYxMjBfX3NpX2NsYXNzX3R5cGVfaW5mb0UAAAAA9A0AABQOAADwCwAAAAAAAJgOAAAIAAAAFgAAAAoAAAALAAAADgAAABcAAAAYAAAAGQAAAE4xMF9fY3h4YWJpdjEyMV9fdm1pX2NsYXNzX3R5cGVfaW5mb0UAAAD0DQAAcA4AAPALAAAAAAAAUAwAAAgAAAAaAAAACgAAAAsAAAAbAAAAyBAAAC0rICAgMFgweAAobnVsbCkAAAAAAAAAAAAAAAARAAoAERERAAAAAAUAAAAAAAAJAAAAAAsAAAAAAAAAABEADwoREREDCgcAAQAJCwsAAAkGCwAACwAGEQAAABEREQAAAAAAAAAAAAAAAAAAAAALAAAAAAAAAAARAAoKERERAAoAAAIACQsAAAAJAAsAAAsAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAAAAAAAAAAAAAAADAAAAAAMAAAAAAkMAAAAAAAMAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAA0AAAAEDQAAAAAJDgAAAAAADgAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAPAAAAAA8AAAAACRAAAAAAABAAABAAABIAAAASEhIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEgAAABISEgAAAAAAAAkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAsAAAAAAAAAAAAAAAoAAAAACgAAAAAJCwAAAAAACwAACwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAAAAAAAMAAAAAAwAAAAACQwAAAAAAAwAAAwAADAxMjM0NTY3ODlBQkNERUYAQcAhC4ADkBhQAAAAAAAFAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAdAAAAHgAAAEgUAAAABAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAK/////wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEHAJAvIDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==';
+if (!isDataURI(wasmBinaryFile)) {
+  wasmBinaryFile = locateFile(wasmBinaryFile);
+}
 
-  var method = 'native-wasm';
-
-  var wasmTextFile = '';
-  var wasmBinaryFile = 'data:application/octet-stream;base64,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bnNpZ25lZCBpbnQ+AGVtc2NyaXB0ZW46Om1lbW9yeV92aWV3PGludDhfdD4AZW1zY3JpcHRlbjo6bWVtb3J5X3ZpZXc8dWludDhfdD4AZW1zY3JpcHRlbjo6bWVtb3J5X3ZpZXc8aW50MTZfdD4AZW1zY3JpcHRlbjo6bWVtb3J5X3ZpZXc8dWludDE2X3Q+AGVtc2NyaXB0ZW46Om1lbW9yeV92aWV3PGludDMyX3Q+AGVtc2NyaXB0ZW46Om1lbW9yeV92aWV3PHVpbnQzMl90PgBlbXNjcmlwdGVuOjptZW1vcnlfdmlldzxsb25nIGRvdWJsZT4ATjEwZW1zY3JpcHRlbjExbWVtb3J5X3ZpZXdJZUVFAGVtc2NyaXB0ZW46Om1lbW9yeV92aWV3PGRvdWJsZT4ATjEwZW1zY3JpcHRlbjExbWVtb3J5X3ZpZXdJZEVFAGVtc2NyaXB0ZW46Om1lbW9yeV92aWV3PGZsb2F0PgBOMTBlbXNjcmlwdGVuMTFtZW1vcnlfdmlld0lmRUUAZW1zY3JpcHRlbjo6bWVtb3J5X3ZpZXc8dW5zaWduZWQgbG9uZz4ATjEwZW1zY3JpcHRlbjExbWVtb3J5X3ZpZXdJbUVFAGVtc2NyaXB0ZW46Om1lbW9yeV92aWV3PGxvbmc+AE4xMGVtc2NyaXB0ZW4xMW1lbW9yeV92aWV3SWxFRQBOMTBlbXNjcmlwdGVuMTFtZW1vcnlfdmlld0lqRUUATjEwZW1zY3JpcHRlbjExbWVtb3J5X3ZpZXdJaUVFAE4xMGVtc2NyaXB0ZW4xMW1lbW9yeV92aWV3SXRFRQBOMTBlbXNjcmlwdGVuMTFtZW1vcnlfdmlld0lzRUUATjEwZW1zY3JpcHRlbjExbWVtb3J5X3ZpZXdJaEVFAE4xMGVtc2NyaXB0ZW4xMW1lbW9yeV92aWV3SWFFRQBlbXNjcmlwdGVuOjptZW1vcnlfdmlldzxjaGFyPgBOMTBlbXNjcmlwdGVuMTFtZW1vcnlfdmlld0ljRUUATjEwZW1zY3JpcHRlbjN2YWxFAE5TdDNfXzIxMmJhc2ljX3N0cmluZ0l3TlNfMTFjaGFyX3RyYWl0c0l3RUVOU185YWxsb2NhdG9ySXdFRUVFAE5TdDNfXzIyMV9fYmFzaWNfc3RyaW5nX2NvbW1vbklMYjFFRUUATlN0M19fMjEyYmFzaWNfc3RyaW5nSWhOU18xMWNoYXJfdHJhaXRzSWhFRU5TXzlhbGxvY2F0b3JJaEVFRUUATlN0M19fMjEyYmFzaWNfc3RyaW5nSWNOU18xMWNoYXJfdHJhaXRzSWNFRU5TXzlhbGxvY2F0b3JJY0VFRUUAZG91YmxlAGZsb2F0AHVuc2lnbmVkIGxvbmcAbG9uZwB1bnNpZ25lZCBpbnQAaW50AHVuc2lnbmVkIHNob3J0AHNob3J0AHVuc2lnbmVkIGNoYXIAc2lnbmVkIGNoYXIAY2hhcgBOMTBfX2N4eGFiaXYxMTZfX3NoaW1fdHlwZV9pbmZvRQBTdDl0eXBlX2luZm8ATjEwX19jeHhhYml2MTIwX19zaV9jbGFzc190eXBlX2luZm9FAE4xMF9fY3h4YWJpdjExN19fY2xhc3NfdHlwZV9pbmZvRQBOMTBfX2N4eGFiaXYxMTlfX3BvaW50ZXJfdHlwZV9pbmZvRQBOMTBfX2N4eGFiaXYxMTdfX3BiYXNlX3R5cGVfaW5mb0UATjEwX19jeHhhYml2MTIzX19mdW5kYW1lbnRhbF90eXBlX2luZm9FAHYARG4AYgBjAGgAYQBzAHQAaQBqAGwAbQBmAGQATjEwX19jeHhhYml2MTIxX192bWlfY2xhc3NfdHlwZV9pbmZvRQ==';
-  var asmjsCodeFile = '';
-
-  if (typeof Module['locateFile'] === 'function') {
-    if (!isDataURI(wasmTextFile)) {
-      wasmTextFile = Module['locateFile'](wasmTextFile);
+function getBinary() {
+  try {
+    if (wasmBinary) {
+      return new Uint8Array(wasmBinary);
     }
-    if (!isDataURI(wasmBinaryFile)) {
-      wasmBinaryFile = Module['locateFile'](wasmBinaryFile);
+
+    var binary = tryParseAsDataURI(wasmBinaryFile);
+    if (binary) {
+      return binary;
     }
-    if (!isDataURI(asmjsCodeFile)) {
-      asmjsCodeFile = Module['locateFile'](asmjsCodeFile);
+    if (readBinary) {
+      return readBinary(wasmBinaryFile);
+    } else {
+      throw "sync fetching of the wasm failed: you can preload it to Module['wasmBinary'] manually, or emcc.py will do that for you when generating HTML (but not JS)";
     }
   }
+  catch (err) {
+    abort(err);
+  }
+}
 
-  // utilities
+function getBinaryPromise() {
+  // If we don't have the binary yet, and have the Fetch api, use that;
+  // in some environments, like Electron's render process, Fetch api may be present, but have a different context than expected, let's only use it on the Web
+  if (!wasmBinary && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function'
+      // Let's not use fetch to get objects over file:// as it's most likely Cordova which doesn't support fetch for file://
+      && !isFileURI(wasmBinaryFile)
+      ) {
+    return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function(response) {
+      if (!response['ok']) {
+        throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
+      }
+      return response['arrayBuffer']();
+    }).catch(function () {
+      return getBinary();
+    });
+  }
+  // Otherwise, getBinary should be able to get it synchronously
+  return Promise.resolve().then(getBinary);
+}
 
-  var wasmPageSize = 64*1024;
 
+
+// Create the wasm instance.
+// Receives the wasm imports, returns the exports.
+function createWasm() {
+  // prepare imports
   var info = {
-    'global': null,
-    'env': null,
-    'asm2wasm': { // special asm2wasm imports
-      "f64-rem": function(x, y) {
-        return x % y;
-      },
-      "debugger": function() {
-        debugger;
-      }
-    },
-    'parent': Module // Module inside wasm-js.cpp refers to wasm-js.cpp; this allows access to the outside program.
+    'env': asmLibraryArg,
+    'wasi_snapshot_preview1': asmLibraryArg
   };
-
-  var exports = null;
-
-
-  function mergeMemory(newBuffer) {
-    // The wasm instance creates its memory. But static init code might have written to
-    // buffer already, including the mem init file, and we must copy it over in a proper merge.
-    // TODO: avoid this copy, by avoiding such static init writes
-    // TODO: in shorter term, just copy up to the last static init write
-    var oldBuffer = Module['buffer'];
-    if (newBuffer.byteLength < oldBuffer.byteLength) {
-      Module['printErr']('the new buffer in mergeMemory is smaller than the previous one. in native wasm, we should grow memory here');
-    }
-    var oldView = new Int8Array(oldBuffer);
-    var newView = new Int8Array(newBuffer);
+  // Load the wasm module and create an instance of using native support in the JS engine.
+  // handle a generated wasm instance, receiving its exports and
+  // performing other necessary setup
+  /** @param {WebAssembly.Module=} module*/
+  function receiveInstance(instance, module) {
+    var exports = instance.exports;
+    Module['asm'] = exports;
+    removeRunDependency('wasm-instantiate');
+  }
+  // we can't run yet (except in a pthread, where we have a custom sync instantiator)
+  addRunDependency('wasm-instantiate');
 
 
-    newView.set(oldView);
-    updateGlobalBuffer(newBuffer);
-    updateGlobalBufferViews();
+  function receiveInstantiatedSource(output) {
+    // 'output' is a WebAssemblyInstantiatedSource object which has both the module and instance.
+    // receiveInstance() will swap in the exports (to Module.asm) so they can be called
+    // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.
+    // When the regression is fixed, can restore the above USE_PTHREADS-enabled path.
+    receiveInstance(output['instance']);
   }
 
-  function fixImports(imports) {
-    return imports;
-  }
 
-  function getBinary() {
-    try {
-      if (Module['wasmBinary']) {
-        return new Uint8Array(Module['wasmBinary']);
-      }
-      var binary = tryParseAsDataURI(wasmBinaryFile);
-      if (binary) {
-        return binary;
-      }
-      if (Module['readBinary']) {
-        return Module['readBinary'](wasmBinaryFile);
-      } else {
-        throw "on the web, we need the wasm binary to be preloaded and set on Module['wasmBinary']. emcc.py will do that for you when generating HTML (but not JS)";
-      }
-    }
-    catch (err) {
-      abort(err);
-    }
-  }
+  function instantiateArrayBuffer(receiver) {
+    return getBinaryPromise().then(function(binary) {
+      return WebAssembly.instantiate(binary, info);
+    }).then(receiver, function(reason) {
+      err('failed to asynchronously prepare wasm: ' + reason);
 
-  function getBinaryPromise() {
-    // if we don't have the binary yet, and have the Fetch api, use that
-    // in some environments, like Electron's render process, Fetch api may be present, but have a different context than expected, let's only use it on the Web
-    if (!Module['wasmBinary'] && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function') {
-      return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function(response) {
-        if (!response['ok']) {
-          throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
-        }
-        return response['arrayBuffer']();
-      }).catch(function () {
-        return getBinary();
-      });
-    }
-    // Otherwise, getBinary should be able to get it synchronously
-    return new Promise(function(resolve, reject) {
-      resolve(getBinary());
+
+      abort(reason);
     });
   }
 
-  // do-method functions
-
-
-  function doNativeWasm(global, env, providedBuffer) {
-    if (typeof WebAssembly !== 'object') {
-      Module['printErr']('no native wasm support detected');
-      return false;
-    }
-    // prepare memory import
-    if (!(Module['wasmMemory'] instanceof WebAssembly.Memory)) {
-      Module['printErr']('no native wasm Memory in use');
-      return false;
-    }
-    env['memory'] = Module['wasmMemory'];
-    // Load the wasm module and create an instance of using native support in the JS engine.
-    info['global'] = {
-      'NaN': NaN,
-      'Infinity': Infinity
-    };
-    info['global.Math'] = Math;
-    info['env'] = env;
-    // handle a generated wasm instance, receiving its exports and
-    // performing other necessary setup
-    function receiveInstance(instance, module) {
-      exports = instance.exports;
-      if (exports.memory) mergeMemory(exports.memory);
-      Module['asm'] = exports;
-      Module["usingWasm"] = true;
-      removeRunDependency('wasm-instantiate');
-    }
-    addRunDependency('wasm-instantiate');
-
-    // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback
-    // to manually instantiate the Wasm module themselves. This allows pages to run the instantiation parallel
-    // to any other async startup actions they are performing.
-    if (Module['instantiateWasm']) {
-      try {
-        return Module['instantiateWasm'](info, receiveInstance);
-      } catch(e) {
-        Module['printErr']('Module.instantiateWasm callback failed with error: ' + e);
-        return false;
-      }
-    }
-
+  // Prefer streaming instantiation if available.
+  function instantiateSync() {
     var instance;
+    var module;
+    var binary;
     try {
-      instance = new WebAssembly.Instance(new WebAssembly.Module(getBinary()), info)
+      binary = getBinary();
+      module = new WebAssembly.Module(binary);
+      instance = new WebAssembly.Instance(module, info);
     } catch (e) {
-      Module['printErr']('failed to compile wasm module: ' + e);
-      if (e.toString().indexOf('imported Memory with incompatible size') >= 0) {
-        Module['printErr']('Memory size incompatibility issues may be due to changing TOTAL_MEMORY at runtime to something too large. Use ALLOW_MEMORY_GROWTH to allow any size memory (and also make sure not to set TOTAL_MEMORY at runtime to something smaller than it was at compile time).');
+      var str = e.toString();
+      err('failed to compile wasm module: ' + str);
+      if (str.indexOf('imported Memory') >= 0 ||
+          str.indexOf('memory import') >= 0) {
+        err('Memory size incompatibility issues may be due to changing INITIAL_MEMORY at runtime to something too large. Use ALLOW_MEMORY_GROWTH to allow any size memory (and also make sure not to set INITIAL_MEMORY at runtime to something smaller than it was at compile time).');
       }
+      throw e;
+    }
+    receiveInstance(instance, module);
+  }
+  // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback
+  // to manually instantiate the Wasm module themselves. This allows pages to run the instantiation parallel
+  // to any other async startup actions they are performing.
+  if (Module['instantiateWasm']) {
+    try {
+      var exports = Module['instantiateWasm'](info, receiveInstance);
+      return exports;
+    } catch(e) {
+      err('Module.instantiateWasm callback failed with error: ' + e);
       return false;
     }
-    receiveInstance(instance);
-    return exports;
   }
 
-
-  // We may have a preloaded value in Module.asm, save it
-  Module['asmPreload'] = Module['asm'];
-
-  // Memory growth integration code
-
-  var asmjsReallocBuffer = Module['reallocBuffer'];
-
-  var wasmReallocBuffer = function(size) {
-    var PAGE_MULTIPLE = Module["usingWasm"] ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE; // In wasm, heap size must be a multiple of 64KB. In asm.js, they need to be multiples of 16MB.
-    size = alignUp(size, PAGE_MULTIPLE); // round up to wasm page size
-    var old = Module['buffer'];
-    var oldSize = old.byteLength;
-    if (Module["usingWasm"]) {
-      // native wasm support
-      try {
-        var result = Module['wasmMemory'].grow((size - oldSize) / wasmPageSize); // .grow() takes a delta compared to the previous size
-        if (result !== (-1 | 0)) {
-          // success in native wasm memory growth, get the buffer from the memory
-          return Module['buffer'] = Module['wasmMemory'].buffer;
-        } else {
-          return null;
-        }
-      } catch(e) {
-        return null;
-      }
-    }
-  };
-
-  Module['reallocBuffer'] = function(size) {
-    if (finalMethod === 'asmjs') {
-      return asmjsReallocBuffer(size);
-    } else {
-      return wasmReallocBuffer(size);
-    }
-  };
-
-  // we may try more than one; this is the final one, that worked and we are using
-  var finalMethod = '';
-
-  // Provide an "asm.js function" for the application, called to "link" the asm.js module. We instantiate
-  // the wasm module at that time, and it receives imports and provides exports and so forth, the app
-  // doesn't need to care that it is wasm or olyfilled wasm or asm.js.
-
-  Module['asm'] = function(global, env, providedBuffer) {
-    env = fixImports(env);
-
-    // import table
-    if (!env['table']) {
-      var TABLE_SIZE = Module['wasmTableSize'];
-      if (TABLE_SIZE === undefined) TABLE_SIZE = 1024; // works in binaryen interpreter at least
-      var MAX_TABLE_SIZE = Module['wasmMaxTableSize'];
-      if (typeof WebAssembly === 'object' && typeof WebAssembly.Table === 'function') {
-        if (MAX_TABLE_SIZE !== undefined) {
-          env['table'] = new WebAssembly.Table({ 'initial': TABLE_SIZE, 'maximum': MAX_TABLE_SIZE, 'element': 'anyfunc' });
-        } else {
-          env['table'] = new WebAssembly.Table({ 'initial': TABLE_SIZE, element: 'anyfunc' });
-        }
-      } else {
-        env['table'] = new Array(TABLE_SIZE); // works in binaryen interpreter at least
-      }
-      Module['wasmTable'] = env['table'];
-    }
-
-    if (!env['memoryBase']) {
-      env['memoryBase'] = Module['STATIC_BASE']; // tell the memory segments where to place themselves
-    }
-    if (!env['tableBase']) {
-      env['tableBase'] = 0; // table starts at 0 by default, in dynamic linking this will change
-    }
-
-    // try the methods. each should return the exports if it succeeded
-
-    var exports;
-    exports = doNativeWasm(global, env, providedBuffer);
-
-    if (!exports) abort('no binaryen method succeeded. consider enabling more options, like interpreting, if you want that: https://github.com/kripken/emscripten/wiki/WebAssembly#binaryen-methods');
-
-
-    return exports;
-  };
-
-  var methodHandler = Module['asm']; // note our method handler, as we may modify Module['asm'] later
+  instantiateSync();
+  return Module['asm']; // exports were assigned here
 }
 
-integrateWasmJS();
+// Globals used by JS i64 conversions
+var tempDouble;
+var tempI64;
 
 // === Body ===
 
-var ASM_CONSTS = [];
+var ASM_CONSTS = {
+  
+};
 
 
 
 
-
-STATIC_BASE = GLOBAL_BASE;
-
-STATICTOP = STATIC_BASE + 3984;
-/* global initializers */  __ATINIT__.push({ func: function() { __GLOBAL__sub_I_SimpleKernel_cc() } }, { func: function() { __GLOBAL__sub_I_bind_cpp() } });
-
-
-
-
-
-
-
-var STATIC_BUMP = 3984;
-Module["STATIC_BASE"] = STATIC_BASE;
-Module["STATIC_BUMP"] = STATIC_BUMP;
 
 /* no memory initializer */
-var tempDoublePtr = STATICTOP; STATICTOP += 16;
-
-function copyTempFloat(ptr) { // functions, because inlining this code increases code size too much
-
-  HEAP8[tempDoublePtr] = HEAP8[ptr];
-
-  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];
-
-  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];
-
-  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];
-
-}
-
-function copyTempDouble(ptr) {
-
-  HEAP8[tempDoublePtr] = HEAP8[ptr];
-
-  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];
-
-  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];
-
-  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];
-
-  HEAP8[tempDoublePtr+4] = HEAP8[ptr+4];
-
-  HEAP8[tempDoublePtr+5] = HEAP8[ptr+5];
-
-  HEAP8[tempDoublePtr+6] = HEAP8[ptr+6];
-
-  HEAP8[tempDoublePtr+7] = HEAP8[ptr+7];
-
-}
-
 // {{PRE_LIBRARY}}
 
 
-  
-  function __ZSt18uncaught_exceptionv() { // std::uncaught_exception()
-      return !!__ZSt18uncaught_exceptionv.uncaught_exception;
+  function callRuntimeCallbacks(callbacks) {
+      while(callbacks.length > 0) {
+        var callback = callbacks.shift();
+        if (typeof callback == 'function') {
+          callback(Module); // Pass the module as the first argument.
+          continue;
+        }
+        var func = callback.func;
+        if (typeof func === 'number') {
+          if (callback.arg === undefined) {
+            wasmTable.get(func)();
+          } else {
+            wasmTable.get(func)(callback.arg);
+          }
+        } else {
+          func(callback.arg === undefined ? null : callback.arg);
+        }
+      }
     }
+
+  function demangle(func) {
+      return func;
+    }
+
+  function demangleAll(text) {
+      var regex =
+        /\b_Z[\w\d_]+/g;
+      return text.replace(regex,
+        function(x) {
+          var y = demangle(x);
+          return x === y ? x : (y + ' [' + x + ']');
+        });
+    }
+
   
-  
-  
-  var EXCEPTIONS={last:0,caught:[],infos:{},deAdjust:function (adjusted) {
-        if (!adjusted || EXCEPTIONS.infos[adjusted]) return adjusted;
-        for (var ptr in EXCEPTIONS.infos) {
-          var info = EXCEPTIONS.infos[ptr];
-          if (info.adjusted === adjusted) {
-            return ptr;
-          }
-        }
-        return adjusted;
-      },addRef:function (ptr) {
-        if (!ptr) return;
-        var info = EXCEPTIONS.infos[ptr];
-        info.refcount++;
-      },decRef:function (ptr) {
-        if (!ptr) return;
-        var info = EXCEPTIONS.infos[ptr];
-        assert(info.refcount > 0);
-        info.refcount--;
-        // A rethrown exception can reach refcount 0; it must not be discarded
-        // Its next handler will clear the rethrown flag and addRef it, prior to
-        // final decRef and destruction here
-        if (info.refcount === 0 && !info.rethrown) {
-          if (info.destructor) {
-            Module['dynCall_vi'](info.destructor, ptr);
-          }
-          delete EXCEPTIONS.infos[ptr];
-          ___cxa_free_exception(ptr);
-        }
-      },clearRef:function (ptr) {
-        if (!ptr) return;
-        var info = EXCEPTIONS.infos[ptr];
-        info.refcount = 0;
-      }};
-  function ___resumeException(ptr) {
-      if (!EXCEPTIONS.last) { EXCEPTIONS.last = ptr; }
-      throw ptr + " - Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0 or DISABLE_EXCEPTION_CATCHING=2 to catch.";
-    }function ___cxa_find_matching_catch() {
-      var thrown = EXCEPTIONS.last;
-      if (!thrown) {
-        // just pass through the null ptr
-        return ((setTempRet0(0),0)|0);
+  function dynCallLegacy(sig, ptr, args) {
+      if (args && args.length) {
+        return Module['dynCall_' + sig].apply(null, [ptr].concat(args));
       }
-      var info = EXCEPTIONS.infos[thrown];
-      var throwntype = info.type;
-      if (!throwntype) {
-        // just pass through the thrown ptr
-        return ((setTempRet0(0),thrown)|0);
+      return Module['dynCall_' + sig].call(null, ptr);
+    }function dynCall(sig, ptr, args) {
+      // Without WASM_BIGINT support we cannot directly call function with i64 as
+      // part of thier signature, so we rely the dynCall functions generated by
+      // wasm-emscripten-finalize
+      if (sig.indexOf('j') != -1) {
+        return dynCallLegacy(sig, ptr, args);
       }
-      var typeArray = Array.prototype.slice.call(arguments);
   
-      var pointer = Module['___cxa_is_pointer_type'](throwntype);
-      // can_catch receives a **, add indirection
-      if (!___cxa_find_matching_catch.buffer) ___cxa_find_matching_catch.buffer = _malloc(4);
-      HEAP32[((___cxa_find_matching_catch.buffer)>>2)]=thrown;
-      thrown = ___cxa_find_matching_catch.buffer;
-      // The different catch blocks are denoted by different types.
-      // Due to inheritance, those types may not precisely match the
-      // type of the thrown object. Find one which matches, and
-      // return the type of the catch block which should be called.
-      for (var i = 0; i < typeArray.length; i++) {
-        if (typeArray[i] && Module['___cxa_can_catch'](typeArray[i], throwntype, thrown)) {
-          thrown = HEAP32[((thrown)>>2)]; // undo indirection
-          info.adjusted = thrown;
-          return ((setTempRet0(typeArray[i]),thrown)|0);
+      return wasmTable.get(ptr).apply(null, args)
+    }
+
+  function jsStackTrace() {
+      var error = new Error();
+      if (!error.stack) {
+        // IE10+ special cases: It does have callstack info, but it is only populated if an Error object is thrown,
+        // so try that as a special-case.
+        try {
+          throw new Error();
+        } catch(e) {
+          error = e;
+        }
+        if (!error.stack) {
+          return '(no stack trace available)';
         }
       }
-      // Shouldn't happen unless we have bogus data in typeArray
-      // or encounter a type for which emscripten doesn't have suitable
-      // typeinfo defined. Best-efforts match just in case.
-      thrown = HEAP32[((thrown)>>2)]; // undo indirection
-      return ((setTempRet0(throwntype),thrown)|0);
-    }function ___gxx_personality_v0() {
+      return error.stack.toString();
+    }
+
+  function stackTrace() {
+      var js = jsStackTrace();
+      if (Module['extraStackTrace']) js += '\n' + Module['extraStackTrace']();
+      return demangleAll(js);
     }
 
   
@@ -1879,7 +1846,8 @@ function copyTempDouble(ptr) {
       if (0 === unregisteredTypes.length) {
           onComplete(typeConverters);
       }
-    }function registerType(rawType, registeredInstance, options) {
+    }/** @param {Object=} options */
+  function registerType(rawType, registeredInstance, options) {
       options = options || {};
   
       if (!('argPackAdvance' in registeredInstance)) {
@@ -1988,6 +1956,53 @@ function copyTempDouble(ptr) {
         return handle.$$.ptrType.registeredClass.name;
       }
       throwBindingError(getInstanceTypeName(obj) + ' instance already deleted');
+    }
+  
+  
+  var finalizationGroup=false;
+  
+  function detachFinalizer(handle) {}
+  
+  
+  function runDestructor($$) {
+      if ($$.smartPtr) {
+          $$.smartPtrType.rawDestructor($$.smartPtr);
+      } else {
+          $$.ptrType.registeredClass.rawDestructor($$.ptr);
+      }
+    }function releaseClassHandle($$) {
+      $$.count.value -= 1;
+      var toDelete = 0 === $$.count.value;
+      if (toDelete) {
+          runDestructor($$);
+      }
+    }function attachFinalizer(handle) {
+      if ('undefined' === typeof FinalizationGroup) {
+          attachFinalizer = function (handle) { return handle; };
+          return handle;
+      }
+      // If the running environment has a FinalizationGroup (see
+      // https://github.com/tc39/proposal-weakrefs), then attach finalizers
+      // for class handles.  We check for the presence of FinalizationGroup
+      // at run-time, not build-time.
+      finalizationGroup = new FinalizationGroup(function (iter) {
+          for (var result = iter.next(); !result.done; result = iter.next()) {
+              var $$ = result.value;
+              if (!$$.ptr) {
+                  console.warn('object already deleted: ' + $$.ptr);
+              } else {
+                  releaseClassHandle($$);
+              }
+          }
+      });
+      attachFinalizer = function(handle) {
+          finalizationGroup.register(handle, handle.$$, handle.$$);
+          return handle;
+      };
+      detachFinalizer = function(handle) {
+          finalizationGroup.unregister(handle.$$);
+      };
+      return attachFinalizer(handle);
     }function ClassHandle_clone() {
       if (!this.$$.ptr) {
           throwInstanceAlreadyDeleted(this);
@@ -1997,11 +2012,11 @@ function copyTempDouble(ptr) {
           this.$$.count.value += 1;
           return this;
       } else {
-          var clone = Object.create(Object.getPrototypeOf(this), {
+          var clone = attachFinalizer(Object.create(Object.getPrototypeOf(this), {
               $$: {
                   value: shallowCopyInternalPointer(this.$$),
               }
-          });
+          }));
   
           clone.$$.count.value += 1;
           clone.$$.deleteScheduled = false;
@@ -2009,15 +2024,7 @@ function copyTempDouble(ptr) {
       }
     }
   
-  
-  function runDestructor(handle) {
-      var $$ = handle.$$;
-      if ($$.smartPtr) {
-          $$.smartPtrType.rawDestructor($$.smartPtr);
-      } else {
-          $$.ptrType.registeredClass.rawDestructor($$.ptr);
-      }
-    }function ClassHandle_delete() {
+  function ClassHandle_delete() {
       if (!this.$$.ptr) {
           throwInstanceAlreadyDeleted(this);
       }
@@ -2026,11 +2033,9 @@ function copyTempDouble(ptr) {
           throwBindingError('Object already scheduled for deletion');
       }
   
-      this.$$.count.value -= 1;
-      var toDelete = 0 === this.$$.count.value;
-      if (toDelete) {
-          runDestructor(this);
-      }
+      detachFinalizer(this);
+      releaseClassHandle(this.$$);
+  
       if (!this.$$.preservePointerOnDelete) {
           this.$$.smartPtr = undefined;
           this.$$.ptr = undefined;
@@ -2092,7 +2097,8 @@ function copyTempDouble(ptr) {
           proto[methodName].overloadTable = [];
           proto[methodName].overloadTable[prevFunc.argCount] = prevFunc;
       }
-    }function exposePublicSymbol(name, value, numArguments) {
+    }/** @param {number=} numArguments */
+  function exposePublicSymbol(name, value, numArguments) {
       if (Module.hasOwnProperty(name)) {
           if (undefined === numArguments || (undefined !== Module[name].overloadTable && undefined !== Module[name].overloadTable[numArguments])) {
               throwBindingError("Cannot register public name '" + name + "' twice");
@@ -2115,6 +2121,7 @@ function copyTempDouble(ptr) {
       }
     }
   
+  /** @constructor */
   function RegisteredClass(
       name,
       constructor,
@@ -2357,11 +2364,11 @@ function copyTempDouble(ptr) {
           throwInternalError('Both smartPtrType and smartPtr must be specified');
       }
       record.count = { value: 1 };
-      return Object.create(prototype, {
+      return attachFinalizer(Object.create(prototype, {
           $$: {
               value: record,
           },
-      });
+      }));
     }function RegisteredPointer_fromWireType(ptr) {
       // ptr is a raw pointer (or a raw smartpointer)
   
@@ -2443,7 +2450,15 @@ function copyTempDouble(ptr) {
       RegisteredPointer.prototype['readValueFromPointer'] = simpleReadValueFromPointer;
       RegisteredPointer.prototype['deleteObject'] = RegisteredPointer_deleteObject;
       RegisteredPointer.prototype['fromWireType'] = RegisteredPointer_fromWireType;
-    }function RegisteredPointer(
+    }/** @constructor
+      @param {*=} pointeeType,
+      @param {*=} sharingPolicy,
+      @param {*=} rawGetPointee,
+      @param {*=} rawConstructor,
+      @param {*=} rawShare,
+      @param {*=} rawDestructor,
+       */
+  function RegisteredPointer(
       name,
       registeredClass,
       isReference,
@@ -2489,6 +2504,7 @@ function copyTempDouble(ptr) {
       }
     }
   
+  /** @param {number=} numArguments */
   function replacePublicSymbol(name, value, numArguments) {
       if (!Module.hasOwnProperty(name)) {
           throwInternalError('Replacing nonexistant public symbol');
@@ -2503,52 +2519,28 @@ function copyTempDouble(ptr) {
       }
     }
   
-  function embind__requireFunction(signature, rawFunction) {
+  
+  function getDynCaller(sig, ptr) {
+      assert(sig.indexOf('j') >= 0, 'getDynCaller should only be called with i64 sigs')
+      var argCache = [];
+      return function() {
+        argCache.length = arguments.length;
+        for (var i = 0; i < arguments.length; i++) {
+          argCache[i] = arguments[i];
+        }
+        return dynCall(sig, ptr, argCache);
+      };
+    }function embind__requireFunction(signature, rawFunction) {
       signature = readLatin1String(signature);
   
-      function makeDynCaller(dynCall) {
-          var args = [];
-          for (var i = 1; i < signature.length; ++i) {
-              args.push('a' + i);
-          }
-  
-          var name = 'dynCall_' + signature + '_' + rawFunction;
-          var body = 'return function ' + name + '(' + args.join(', ') + ') {\n';
-          body    += '    return dynCall(rawFunction' + (args.length ? ', ' : '') + args.join(', ') + ');\n';
-          body    += '};\n';
-  
-          return (new Function('dynCall', 'rawFunction', body))(dynCall, rawFunction);
+      function makeDynCaller() {
+        if (signature.indexOf('j') != -1) {
+          return getDynCaller(signature, rawFunction);
+        }
+        return wasmTable.get(rawFunction);
       }
   
-      var fp;
-      if (Module['FUNCTION_TABLE_' + signature] !== undefined) {
-          fp = Module['FUNCTION_TABLE_' + signature][rawFunction];
-      } else if (typeof FUNCTION_TABLE !== "undefined") {
-          fp = FUNCTION_TABLE[rawFunction];
-      } else {
-          // asm.js does not give direct access to the function tables,
-          // and thus we must go through the dynCall interface which allows
-          // calling into a signature's function table by pointer value.
-          //
-          // https://github.com/dherman/asm.js/issues/83
-          //
-          // This has three main penalties:
-          // - dynCall is another function call in the path from JavaScript to C++.
-          // - JITs may not predict through the function table indirection at runtime.
-          var dc = Module["asm"]['dynCall_' + signature];
-          if (dc === undefined) {
-              // We will always enter this branch if the signature
-              // contains 'f' and PRECISE_F32 is not enabled.
-              //
-              // Try again, replacing 'f' with 'd'.
-              dc = Module["asm"]['dynCall_' + signature.replace(/f/g, 'd')];
-              if (dc === undefined) {
-                  throwBindingError("No dynCall invoker for signature: " + signature);
-              }
-          }
-          fp = makeDynCaller(dc);
-      }
-  
+      var fp = makeDynCaller();
       if (typeof fp !== "function") {
           throwBindingError("unknown function pointer with signature " + signature + ": " + rawFunction);
       }
@@ -2715,8 +2707,11 @@ function copyTempDouble(ptr) {
       invoker,
       rawConstructor
     ) {
+      assert(argCount > 0);
       var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
       invoker = embind__requireFunction(invokerSignature, invoker);
+      var args = [rawConstructor];
+      var destructors = [];
   
       whenDependentTypesAreResolved([], [rawClassType], function(classType) {
           classType = classType[0];
@@ -2737,9 +2732,8 @@ function copyTempDouble(ptr) {
                   if (arguments.length !== argCount - 1) {
                       throwBindingError(humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
                   }
-                  var destructors = [];
-                  var args = new Array(argCount);
-                  args[0] = rawConstructor;
+                  destructors.length = 0;
+                  args.length = argCount;
                   for (var i = 1; i < argCount; ++i) {
                       args[i] = argTypes[i]['toWireType'](destructors, arguments[i - 1]);
                   }
@@ -3131,7 +3125,7 @@ function copyTempDouble(ptr) {
           var heap = HEAPU32;
           var size = heap[handle]; // in elements
           var data = heap[handle + 1]; // byte offset into emscripten heap
-          return new TA(heap['buffer'], data, size);
+          return new TA(buffer, data, size);
       }
   
       name = readLatin1String(name);
@@ -3147,53 +3141,85 @@ function copyTempDouble(ptr) {
 
   function __embind_register_std_string(rawType, name) {
       name = readLatin1String(name);
+      var stdStringIsUTF8
+      //process only std::string bindings with UTF8 support, in contrast to e.g. std::basic_string<unsigned char>
+      = (name === "std::string");
+  
       registerType(rawType, {
           name: name,
           'fromWireType': function(value) {
               var length = HEAPU32[value >> 2];
-              var a = new Array(length);
-              for (var i = 0; i < length; ++i) {
-                  a[i] = String.fromCharCode(HEAPU8[value + 4 + i]);
+  
+              var str;
+              if (stdStringIsUTF8) {
+                  var decodeStartPtr = value + 4;
+                  // Looping here to support possible embedded '0' bytes
+                  for (var i = 0; i <= length; ++i) {
+                      var currentBytePtr = value + 4 + i;
+                      if (i == length || HEAPU8[currentBytePtr] == 0) {
+                          var maxRead = currentBytePtr - decodeStartPtr;
+                          var stringSegment = UTF8ToString(decodeStartPtr, maxRead);
+                          if (str === undefined) {
+                              str = stringSegment;
+                          } else {
+                              str += String.fromCharCode(0);
+                              str += stringSegment;
+                          }
+                          decodeStartPtr = currentBytePtr + 1;
+                      }
+                  }
+              } else {
+                  var a = new Array(length);
+                  for (var i = 0; i < length; ++i) {
+                      a[i] = String.fromCharCode(HEAPU8[value + 4 + i]);
+                  }
+                  str = a.join('');
               }
+  
               _free(value);
-              return a.join('');
+  
+              return str;
           },
           'toWireType': function(destructors, value) {
               if (value instanceof ArrayBuffer) {
                   value = new Uint8Array(value);
               }
   
-              function getTAElement(ta, index) {
-                  return ta[index];
-              }
-              function getStringElement(string, index) {
-                  return string.charCodeAt(index);
-              }
-              var getElement;
-              if (value instanceof Uint8Array) {
-                  getElement = getTAElement;
-              } else if (value instanceof Uint8ClampedArray) {
-                  getElement = getTAElement;
-              } else if (value instanceof Int8Array) {
-                  getElement = getTAElement;
-              } else if (typeof value === 'string') {
-                  getElement = getStringElement;
-              } else {
+              var getLength;
+              var valueIsOfTypeString = (typeof value === 'string');
+  
+              if (!(valueIsOfTypeString || value instanceof Uint8Array || value instanceof Uint8ClampedArray || value instanceof Int8Array)) {
                   throwBindingError('Cannot pass non-string to std::string');
+              }
+              if (stdStringIsUTF8 && valueIsOfTypeString) {
+                  getLength = function() {return lengthBytesUTF8(value);};
+              } else {
+                  getLength = function() {return value.length;};
               }
   
               // assumes 4-byte alignment
-              var length = value.length;
-              var ptr = _malloc(4 + length);
+              var length = getLength();
+              var ptr = _malloc(4 + length + 1);
               HEAPU32[ptr >> 2] = length;
-              for (var i = 0; i < length; ++i) {
-                  var charCode = getElement(value, i);
-                  if (charCode > 255) {
-                      _free(ptr);
-                      throwBindingError('String has UTF-16 code units that do not fit in 8 bits');
+              if (stdStringIsUTF8 && valueIsOfTypeString) {
+                  stringToUTF8(value, ptr + 4, length + 1);
+              } else {
+                  if (valueIsOfTypeString) {
+                      for (var i = 0; i < length; ++i) {
+                          var charCode = value.charCodeAt(i);
+                          if (charCode > 255) {
+                              _free(ptr);
+                              throwBindingError('String has UTF-16 code units that do not fit in 8 bits');
+                          }
+                          HEAPU8[ptr + 4 + i] = charCode;
+                      }
+                  } else {
+                      for (var i = 0; i < length; ++i) {
+                          HEAPU8[ptr + 4 + i] = value[i];
+                      }
                   }
-                  HEAPU8[ptr + 4 + i] = charCode;
               }
+  
               if (destructors !== null) {
                   destructors.push(_free, ptr);
               }
@@ -3206,39 +3232,62 @@ function copyTempDouble(ptr) {
     }
 
   function __embind_register_std_wstring(rawType, charSize, name) {
-      // nb. do not cache HEAPU16 and HEAPU32, they may be destroyed by enlargeMemory().
       name = readLatin1String(name);
-      var getHeap, shift;
+      var decodeString, encodeString, getHeap, lengthBytesUTF, shift;
       if (charSize === 2) {
+          decodeString = UTF16ToString;
+          encodeString = stringToUTF16;
+          lengthBytesUTF = lengthBytesUTF16;
           getHeap = function() { return HEAPU16; };
           shift = 1;
       } else if (charSize === 4) {
+          decodeString = UTF32ToString;
+          encodeString = stringToUTF32;
+          lengthBytesUTF = lengthBytesUTF32;
           getHeap = function() { return HEAPU32; };
           shift = 2;
       }
       registerType(rawType, {
           name: name,
           'fromWireType': function(value) {
-              var HEAP = getHeap();
+              // Code mostly taken from _embind_register_std_string fromWireType
               var length = HEAPU32[value >> 2];
-              var a = new Array(length);
-              var start = (value + 4) >> shift;
-              for (var i = 0; i < length; ++i) {
-                  a[i] = String.fromCharCode(HEAP[start + i]);
+              var HEAP = getHeap();
+              var str;
+  
+              var decodeStartPtr = value + 4;
+              // Looping here to support possible embedded '0' bytes
+              for (var i = 0; i <= length; ++i) {
+                  var currentBytePtr = value + 4 + i * charSize;
+                  if (i == length || HEAP[currentBytePtr >> shift] == 0) {
+                      var maxReadBytes = currentBytePtr - decodeStartPtr;
+                      var stringSegment = decodeString(decodeStartPtr, maxReadBytes);
+                      if (str === undefined) {
+                          str = stringSegment;
+                      } else {
+                          str += String.fromCharCode(0);
+                          str += stringSegment;
+                      }
+                      decodeStartPtr = currentBytePtr + charSize;
+                  }
               }
+  
               _free(value);
-              return a.join('');
+  
+              return str;
           },
           'toWireType': function(destructors, value) {
-              // assumes 4-byte alignment
-              var HEAP = getHeap();
-              var length = value.length;
-              var ptr = _malloc(4 + length * charSize);
-              HEAPU32[ptr >> 2] = length;
-              var start = (ptr + 4) >> shift;
-              for (var i = 0; i < length; ++i) {
-                  HEAP[start + i] = value.charCodeAt(i);
+              if (!(typeof value === 'string')) {
+                  throwBindingError('Cannot pass non-string to C++ string type ' + name);
               }
+  
+              // assumes 4-byte alignment
+              var length = lengthBytesUTF(value);
+              var ptr = _malloc(4 + length + charSize);
+              HEAPU32[ptr >> 2] = length >> shift;
+  
+              encodeString(value, ptr + 4, length + charSize);
+  
               if (destructors !== null) {
                   destructors.push(_free, ptr);
               }
@@ -3266,19 +3315,138 @@ function copyTempDouble(ptr) {
       });
     }
 
-  
+  function _abort() {
+      abort();
+    }
+
   function _emscripten_memcpy_big(dest, src, num) {
-      HEAPU8.set(HEAPU8.subarray(src, src+num), dest);
-      return dest;
-    } 
-
-   
+      HEAPU8.copyWithin(dest, src, src + num);
+    }
 
   
-  function ___setErrNo(value) {
-      if (Module['___errno_location']) HEAP32[((Module['___errno_location']())>>2)]=value;
-      return value;
-    } 
+  function _emscripten_get_heap_size() {
+      return HEAPU8.length;
+    }
+  
+  function abortOnCannotGrowMemory(requestedSize) {
+      abort('OOM');
+    }function _emscripten_resize_heap(requestedSize) {
+      requestedSize = requestedSize >>> 0;
+      abortOnCannotGrowMemory(requestedSize);
+    }
+
+  
+  function flush_NO_FILESYSTEM() {
+      // flush anything remaining in the buffers during shutdown
+      if (typeof _fflush !== 'undefined') _fflush(0);
+      var buffers = SYSCALLS.buffers;
+      if (buffers[1].length) SYSCALLS.printChar(1, 10);
+      if (buffers[2].length) SYSCALLS.printChar(2, 10);
+    }
+  
+  
+  var PATH={splitPath:function(filename) {
+        var splitPathRe = /^(\/?|)([\s\S]*?)((?:\.{1,2}|[^\/]+?|)(\.[^.\/]*|))(?:[\/]*)$/;
+        return splitPathRe.exec(filename).slice(1);
+      },normalizeArray:function(parts, allowAboveRoot) {
+        // if the path tries to go above the root, `up` ends up > 0
+        var up = 0;
+        for (var i = parts.length - 1; i >= 0; i--) {
+          var last = parts[i];
+          if (last === '.') {
+            parts.splice(i, 1);
+          } else if (last === '..') {
+            parts.splice(i, 1);
+            up++;
+          } else if (up) {
+            parts.splice(i, 1);
+            up--;
+          }
+        }
+        // if the path is allowed to go above the root, restore leading ..s
+        if (allowAboveRoot) {
+          for (; up; up--) {
+            parts.unshift('..');
+          }
+        }
+        return parts;
+      },normalize:function(path) {
+        var isAbsolute = path.charAt(0) === '/',
+            trailingSlash = path.substr(-1) === '/';
+        // Normalize the path
+        path = PATH.normalizeArray(path.split('/').filter(function(p) {
+          return !!p;
+        }), !isAbsolute).join('/');
+        if (!path && !isAbsolute) {
+          path = '.';
+        }
+        if (path && trailingSlash) {
+          path += '/';
+        }
+        return (isAbsolute ? '/' : '') + path;
+      },dirname:function(path) {
+        var result = PATH.splitPath(path),
+            root = result[0],
+            dir = result[1];
+        if (!root && !dir) {
+          // No dirname whatsoever
+          return '.';
+        }
+        if (dir) {
+          // It has a dirname, strip trailing slash
+          dir = dir.substr(0, dir.length - 1);
+        }
+        return root + dir;
+      },basename:function(path) {
+        // EMSCRIPTEN return '/'' for '/', not an empty string
+        if (path === '/') return '/';
+        path = PATH.normalize(path);
+        path = path.replace(/\/$/, "");
+        var lastSlash = path.lastIndexOf('/');
+        if (lastSlash === -1) return path;
+        return path.substr(lastSlash+1);
+      },extname:function(path) {
+        return PATH.splitPath(path)[3];
+      },join:function() {
+        var paths = Array.prototype.slice.call(arguments, 0);
+        return PATH.normalize(paths.join('/'));
+      },join2:function(l, r) {
+        return PATH.normalize(l + '/' + r);
+      }};var SYSCALLS={mappings:{},buffers:[null,[],[]],printChar:function(stream, curr) {
+        var buffer = SYSCALLS.buffers[stream];
+        if (curr === 0 || curr === 10) {
+          (stream === 1 ? out : err)(UTF8ArrayToString(buffer, 0));
+          buffer.length = 0;
+        } else {
+          buffer.push(curr);
+        }
+      },varargs:undefined,get:function() {
+        SYSCALLS.varargs += 4;
+        var ret = HEAP32[(((SYSCALLS.varargs)-(4))>>2)];
+        return ret;
+      },getStr:function(ptr) {
+        var ret = UTF8ToString(ptr);
+        return ret;
+      },get64:function(low, high) {
+        return low;
+      }};function _fd_write(fd, iov, iovcnt, pnum) {
+      // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
+      var num = 0;
+      for (var i = 0; i < iovcnt; i++) {
+        var ptr = HEAP32[(((iov)+(i*8))>>2)];
+        var len = HEAP32[(((iov)+(i*8 + 4))>>2)];
+        for (var j = 0; j < len; j++) {
+          SYSCALLS.printChar(fd, HEAPU8[ptr+j]);
+        }
+        num += len;
+      }
+      HEAP32[((pnum)>>2)]=num
+      return 0;
+    }
+
+  function _setTempRet0($i) {
+      setTempRet0(($i) | 0);
+    }
 embind_init_charCodes();
 BindingError = Module['BindingError'] = extendError(Error, 'BindingError');;
 InternalError = Module['InternalError'] = extendError(Error, 'InternalError');;
@@ -3287,19 +3455,9 @@ init_RegisteredPointer();
 init_embind();;
 UnboundTypeError = Module['UnboundTypeError'] = extendError(Error, 'UnboundTypeError');;
 init_emval();;
-DYNAMICTOP_PTR = staticAlloc(4);
-
-STACK_BASE = STACKTOP = alignMemory(STATICTOP);
-
-STACK_MAX = STACK_BASE + TOTAL_STACK;
-
-DYNAMIC_BASE = alignMemory(STACK_MAX);
-
-HEAP32[DYNAMICTOP_PTR>>2] = DYNAMIC_BASE;
-
-staticSealed = true; // seal the static portion of memory
-
 var ASSERTIONS = false;
+
+
 
 /** @type {function(string, boolean=, number=)} */
 function intArrayFromString(stringy, dontAddNull, length) {
@@ -3334,7 +3492,7 @@ function intArrayToString(array) {
 
 /**
  * Decodes a base64 string.
- * @param {String} input The string to decode.
+ * @param {string} input The string to decode.
  */
 var decodeBase64 = typeof atob === 'function' ? atob : function (input) {
   var keyStr = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
@@ -3373,11 +3531,13 @@ function intArrayFromBase64(s) {
   if (typeof ENVIRONMENT_IS_NODE === 'boolean' && ENVIRONMENT_IS_NODE) {
     var buf;
     try {
+      // TODO: Update Node.js externs, Closure does not recognize the following Buffer.from()
+      /**@suppress{checkTypes}*/
       buf = Buffer.from(s, 'base64');
     } catch (_) {
       buf = new Buffer(s, 'base64');
     }
-    return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+    return new Uint8Array(buf['buffer'], buf['byteOffset'], buf['byteLength']);
   }
 
   try {
@@ -3404,121 +3564,49 @@ function tryParseAsDataURI(filename) {
 
 
 
-Module['wasmTableSize'] = 47;
+/* global initializers */  __ATINIT__.push({ func: function() { ___wasm_call_ctors() } });
 
-Module['wasmMaxTableSize'] = 47;
+var asmLibraryArg = { "__indirect_function_table": wasmTable, "_embind_register_bool": __embind_register_bool, "_embind_register_class": __embind_register_class, "_embind_register_class_constructor": __embind_register_class_constructor, "_embind_register_class_function": __embind_register_class_function, "_embind_register_emval": __embind_register_emval, "_embind_register_float": __embind_register_float, "_embind_register_integer": __embind_register_integer, "_embind_register_memory_view": __embind_register_memory_view, "_embind_register_std_string": __embind_register_std_string, "_embind_register_std_wstring": __embind_register_std_wstring, "_embind_register_void": __embind_register_void, "abort": _abort, "emscripten_memcpy_big": _emscripten_memcpy_big, "emscripten_resize_heap": _emscripten_resize_heap, "fd_write": _fd_write, "memory": wasmMemory, "setTempRet0": _setTempRet0 };
+var asm = createWasm();
+/** @type {function(...*):?} */
+var ___wasm_call_ctors = Module["___wasm_call_ctors"] = asm["__wasm_call_ctors"]
 
-function invoke_i(index) {
-  try {
-    return Module["dynCall_i"](index);
-  } catch(e) {
-    if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    Module["setThrew"](1, 0);
-  }
-}
+/** @type {function(...*):?} */
+var ___getTypeName = Module["___getTypeName"] = asm["__getTypeName"]
 
-function invoke_ii(index,a1) {
-  try {
-    return Module["dynCall_ii"](index,a1);
-  } catch(e) {
-    if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    Module["setThrew"](1, 0);
-  }
-}
+/** @type {function(...*):?} */
+var ___embind_register_native_and_builtin_types = Module["___embind_register_native_and_builtin_types"] = asm["__embind_register_native_and_builtin_types"]
 
-function invoke_iiii(index,a1,a2,a3) {
-  try {
-    return Module["dynCall_iiii"](index,a1,a2,a3);
-  } catch(e) {
-    if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    Module["setThrew"](1, 0);
-  }
-}
+/** @type {function(...*):?} */
+var ___errno_location = Module["___errno_location"] = asm["__errno_location"]
 
-function invoke_v(index) {
-  try {
-    Module["dynCall_v"](index);
-  } catch(e) {
-    if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    Module["setThrew"](1, 0);
-  }
-}
+/** @type {function(...*):?} */
+var _malloc = Module["_malloc"] = asm["malloc"]
 
-function invoke_vi(index,a1) {
-  try {
-    Module["dynCall_vi"](index,a1);
-  } catch(e) {
-    if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    Module["setThrew"](1, 0);
-  }
-}
+/** @type {function(...*):?} */
+var stackSave = Module["stackSave"] = asm["stackSave"]
 
-function invoke_viiii(index,a1,a2,a3,a4) {
-  try {
-    Module["dynCall_viiii"](index,a1,a2,a3,a4);
-  } catch(e) {
-    if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    Module["setThrew"](1, 0);
-  }
-}
+/** @type {function(...*):?} */
+var stackRestore = Module["stackRestore"] = asm["stackRestore"]
 
-function invoke_viiiii(index,a1,a2,a3,a4,a5) {
-  try {
-    Module["dynCall_viiiii"](index,a1,a2,a3,a4,a5);
-  } catch(e) {
-    if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    Module["setThrew"](1, 0);
-  }
-}
+/** @type {function(...*):?} */
+var stackAlloc = Module["stackAlloc"] = asm["stackAlloc"]
 
-function invoke_viiiiii(index,a1,a2,a3,a4,a5,a6) {
-  try {
-    Module["dynCall_viiiiii"](index,a1,a2,a3,a4,a5,a6);
-  } catch(e) {
-    if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    Module["setThrew"](1, 0);
-  }
-}
+/** @type {function(...*):?} */
+var _free = Module["_free"] = asm["free"]
 
-Module.asmGlobalArg = {};
+/** @type {function(...*):?} */
+var dynCall_jiji = Module["dynCall_jiji"] = asm["dynCall_jiji"]
 
-Module.asmLibraryArg = { "abort": abort, "assert": assert, "enlargeMemory": enlargeMemory, "getTotalMemory": getTotalMemory, "abortOnCannotGrowMemory": abortOnCannotGrowMemory, "invoke_i": invoke_i, "invoke_ii": invoke_ii, "invoke_iiii": invoke_iiii, "invoke_v": invoke_v, "invoke_vi": invoke_vi, "invoke_viiii": invoke_viiii, "invoke_viiiii": invoke_viiiii, "invoke_viiiiii": invoke_viiiiii, "ClassHandle": ClassHandle, "ClassHandle_clone": ClassHandle_clone, "ClassHandle_delete": ClassHandle_delete, "ClassHandle_deleteLater": ClassHandle_deleteLater, "ClassHandle_isAliasOf": ClassHandle_isAliasOf, "ClassHandle_isDeleted": ClassHandle_isDeleted, "RegisteredClass": RegisteredClass, "RegisteredPointer": RegisteredPointer, "RegisteredPointer_deleteObject": RegisteredPointer_deleteObject, "RegisteredPointer_destructor": RegisteredPointer_destructor, "RegisteredPointer_fromWireType": RegisteredPointer_fromWireType, "RegisteredPointer_getPointee": RegisteredPointer_getPointee, "__ZSt18uncaught_exceptionv": __ZSt18uncaught_exceptionv, "___cxa_find_matching_catch": ___cxa_find_matching_catch, "___gxx_personality_v0": ___gxx_personality_v0, "___resumeException": ___resumeException, "___setErrNo": ___setErrNo, "__embind_register_bool": __embind_register_bool, "__embind_register_class": __embind_register_class, "__embind_register_class_constructor": __embind_register_class_constructor, "__embind_register_class_function": __embind_register_class_function, "__embind_register_emval": __embind_register_emval, "__embind_register_float": __embind_register_float, "__embind_register_integer": __embind_register_integer, "__embind_register_memory_view": __embind_register_memory_view, "__embind_register_std_string": __embind_register_std_string, "__embind_register_std_wstring": __embind_register_std_wstring, "__embind_register_void": __embind_register_void, "__emval_decref": __emval_decref, "__emval_register": __emval_register, "_embind_repr": _embind_repr, "_emscripten_memcpy_big": _emscripten_memcpy_big, "constNoSmartPtrRawPointerToWireType": constNoSmartPtrRawPointerToWireType, "count_emval_handles": count_emval_handles, "craftInvokerFunction": craftInvokerFunction, "createNamedFunction": createNamedFunction, "downcastPointer": downcastPointer, "embind__requireFunction": embind__requireFunction, "embind_init_charCodes": embind_init_charCodes, "ensureOverloadTable": ensureOverloadTable, "exposePublicSymbol": exposePublicSymbol, "extendError": extendError, "floatReadValueFromPointer": floatReadValueFromPointer, "flushPendingDeletes": flushPendingDeletes, "genericPointerToWireType": genericPointerToWireType, "getBasestPointer": getBasestPointer, "getInheritedInstance": getInheritedInstance, "getInheritedInstanceCount": getInheritedInstanceCount, "getLiveInheritedInstances": getLiveInheritedInstances, "getShiftFromSize": getShiftFromSize, "getTypeName": getTypeName, "get_first_emval": get_first_emval, "heap32VectorToArray": heap32VectorToArray, "init_ClassHandle": init_ClassHandle, "init_RegisteredPointer": init_RegisteredPointer, "init_embind": init_embind, "init_emval": init_emval, "integerReadValueFromPointer": integerReadValueFromPointer, "makeClassHandle": makeClassHandle, "makeLegalFunctionName": makeLegalFunctionName, "new_": new_, "nonConstNoSmartPtrRawPointerToWireType": nonConstNoSmartPtrRawPointerToWireType, "readLatin1String": readLatin1String, "registerType": registerType, "replacePublicSymbol": replacePublicSymbol, "runDestructor": runDestructor, "runDestructors": runDestructors, "setDelayFunction": setDelayFunction, "shallowCopyInternalPointer": shallowCopyInternalPointer, "simpleReadValueFromPointer": simpleReadValueFromPointer, "throwBindingError": throwBindingError, "throwInstanceAlreadyDeleted": throwInstanceAlreadyDeleted, "throwInternalError": throwInternalError, "throwUnboundTypeError": throwUnboundTypeError, "upcastPointer": upcastPointer, "whenDependentTypesAreResolved": whenDependentTypesAreResolved, "DYNAMICTOP_PTR": DYNAMICTOP_PTR, "tempDoublePtr": tempDoublePtr, "ABORT": ABORT, "STACKTOP": STACKTOP, "STACK_MAX": STACK_MAX };
-// EMSCRIPTEN_START_ASM
-var asm =Module["asm"]// EMSCRIPTEN_END_ASM
-(Module.asmGlobalArg, Module.asmLibraryArg, buffer);
+/** @type {function(...*):?} */
+var __growWasmMemory = Module["__growWasmMemory"] = asm["__growWasmMemory"]
 
-var __GLOBAL__sub_I_SimpleKernel_cc = Module["__GLOBAL__sub_I_SimpleKernel_cc"] = asm["__GLOBAL__sub_I_SimpleKernel_cc"];
-var __GLOBAL__sub_I_bind_cpp = Module["__GLOBAL__sub_I_bind_cpp"] = asm["__GLOBAL__sub_I_bind_cpp"];
-var ___errno_location = Module["___errno_location"] = asm["___errno_location"];
-var ___getTypeName = Module["___getTypeName"] = asm["___getTypeName"];
-var _free = Module["_free"] = asm["_free"];
-var _malloc = Module["_malloc"] = asm["_malloc"];
-var _memcpy = Module["_memcpy"] = asm["_memcpy"];
-var _memset = Module["_memset"] = asm["_memset"];
-var _sbrk = Module["_sbrk"] = asm["_sbrk"];
-var establishStackSpace = Module["establishStackSpace"] = asm["establishStackSpace"];
-var getTempRet0 = Module["getTempRet0"] = asm["getTempRet0"];
-var runPostSets = Module["runPostSets"] = asm["runPostSets"];
-var setTempRet0 = Module["setTempRet0"] = asm["setTempRet0"];
-var setThrew = Module["setThrew"] = asm["setThrew"];
-var stackAlloc = Module["stackAlloc"] = asm["stackAlloc"];
-var stackRestore = Module["stackRestore"] = asm["stackRestore"];
-var stackSave = Module["stackSave"] = asm["stackSave"];
-var dynCall_i = Module["dynCall_i"] = asm["dynCall_i"];
-var dynCall_ii = Module["dynCall_ii"] = asm["dynCall_ii"];
-var dynCall_iiii = Module["dynCall_iiii"] = asm["dynCall_iiii"];
-var dynCall_v = Module["dynCall_v"] = asm["dynCall_v"];
-var dynCall_vi = Module["dynCall_vi"] = asm["dynCall_vi"];
-var dynCall_viiii = Module["dynCall_viiii"] = asm["dynCall_viiii"];
-var dynCall_viiiii = Module["dynCall_viiiii"] = asm["dynCall_viiiii"];
-var dynCall_viiiiii = Module["dynCall_viiiiii"] = asm["dynCall_viiiiii"];
-;
+
 
 
 
 // === Auto-generated postamble setup entry stuff ===
 
-Module['asm'] = asm;
 
 
 
@@ -3589,28 +3677,213 @@ Module['asm'] = asm;
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+var calledRun;
 
 /**
  * @constructor
- * @extends {Error}
  * @this {ExitStatus}
  */
 function ExitStatus(status) {
   this.name = "ExitStatus";
   this.message = "Program terminated with exit(" + status + ")";
   this.status = status;
-};
-ExitStatus.prototype = new Error();
-ExitStatus.prototype.constructor = ExitStatus;
+}
 
-var initialStackTop;
 var calledMain = false;
+
 
 dependenciesFulfilled = function runCaller() {
   // If run has never been called, and we should call run (INVOKE_RUN is true, and Module.noInitialRun is not false)
-  if (!Module['calledRun']) run();
-  if (!Module['calledRun']) dependenciesFulfilled = runCaller; // try this again later, after new deps are fulfilled
-}
+  if (!calledRun) run();
+  if (!calledRun) dependenciesFulfilled = runCaller; // try this again later, after new deps are fulfilled
+};
 
 
 
@@ -3618,7 +3891,7 @@ dependenciesFulfilled = function runCaller() {
 
 /** @type {function(Array=)} */
 function run(args) {
-  args = args || Module['arguments'];
+  args = args || arguments_;
 
   if (runDependencies > 0) {
     return;
@@ -3628,15 +3901,17 @@ function run(args) {
   preRun();
 
   if (runDependencies > 0) return; // a preRun added a dependency, run will be called later
-  if (Module['calledRun']) return; // run may have just been called through dependencies being fulfilled just in this very frame
 
   function doRun() {
-    if (Module['calledRun']) return; // run may have just been called while the async setStatus time below was happening
+    // run may have just been called through dependencies being fulfilled just in this very frame,
+    // or while the async setStatus time below was happening
+    if (calledRun) return;
+    calledRun = true;
     Module['calledRun'] = true;
 
     if (ABORT) return;
 
-    ensureInitRuntime();
+    initRuntime();
 
     preMain();
 
@@ -3654,65 +3929,39 @@ function run(args) {
       }, 1);
       doRun();
     }, 1);
-  } else {
+  } else
+  {
     doRun();
   }
 }
 Module['run'] = run;
 
 
+/** @param {boolean|number=} implicit */
 function exit(status, implicit) {
 
   // if this is just main exit-ing implicitly, and the status is 0, then we
   // don't need to do anything here and can just leave. if the status is
   // non-zero, though, then we need to report it.
   // (we may have warned about this earlier, if a situation justifies doing so)
-  if (implicit && Module['noExitRuntime'] && status === 0) {
+  if (implicit && noExitRuntime && status === 0) {
     return;
   }
 
-  if (Module['noExitRuntime']) {
+  if (noExitRuntime) {
   } else {
 
-    ABORT = true;
     EXITSTATUS = status;
-    STACKTOP = initialStackTop;
 
     exitRuntime();
 
     if (Module['onExit']) Module['onExit'](status);
+
+    ABORT = true;
   }
 
-  if (ENVIRONMENT_IS_NODE) {
-    process['exit'](status);
-  }
-  Module['quit'](status, new ExitStatus(status));
+  quit_(status, new ExitStatus(status));
 }
-Module['exit'] = exit;
-
-var abortDecorators = [];
-
-function abort(what) {
-  if (Module['onAbort']) {
-    Module['onAbort'](what);
-  }
-
-  if (what !== undefined) {
-    Module.print(what);
-    Module.printErr(what);
-    what = JSON.stringify(what)
-  } else {
-    what = '';
-  }
-
-  ABORT = true;
-  EXITSTATUS = 1;
-
-  throw 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
-}
-Module['abort'] = abort;
-
-// {{PRE_RUN_ADDITIONS}}
 
 if (Module['preInit']) {
   if (typeof Module['preInit'] == 'function') Module['preInit'] = [Module['preInit']];
@@ -3722,11 +3971,10 @@ if (Module['preInit']) {
 }
 
 
-Module["noExitRuntime"] = true;
+  noExitRuntime = true;
 
 run();
 
-// {{POST_RUN_ADDITIONS}}
 
 
 
@@ -3737,12 +3985,22 @@ run();
 
 
 /**
- * Copyright (c) 2018 The Chromium Authors. All rights reserved.
- * Use of this source code is governed by a BSD-style license that can be
- * found in the LICENSE file.
+ * Copyright 2018 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 
 // EXPORT_ES6 option does not work as described at
 // https://github.com/kripken/emscripten/issues/6284, so we have to
-// manually add this by '--post-js' setting when the emcc compilation.
+// manually add this by '--post-js' setting when the Emscripten compilation.
 export default Module;

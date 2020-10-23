@@ -43,14 +43,17 @@ class SimpleKernel {
                unsigned channel_count) {
     float* input_buffer = reinterpret_cast<float*>(input_ptr);
     float* output_buffer = reinterpret_cast<float*>(output_ptr);
-
+    int i = 0;
     // Bypasses the data. By design, the channel count will always be the same
     // for |input_buffer| and |output_buffer|.
     for (unsigned channel = 0; channel < channel_count; ++channel) {
       float* destination = output_buffer + channel * kRenderQuantumFrames;
       float* source = input_buffer + channel * kRenderQuantumFrames;
       memcpy(destination, source, kBytesPerChannel);
+      // could maybe do pitch here - (eg using SIMD)
+      i++;
     }
+    printf("Hi from markv");
   }
 };
 
