@@ -1,0 +1,11 @@
+DESCRIPTION
+
+Uses ScriptProcessor (ie not AudioWorklet) to deduce pitch and show as solid circle.
+Does not use wasm.
+Currently only recognises highish notes of recorder.
+
+GOALS
+	Run on IOS (so need a version which uses script processor and not audioworklet)
+	Fast dot product etc - do it in shader because SIMD not available.
+	Final part of pitch computation in wasm
+	Organise code. eg use folder 'webgl'?
