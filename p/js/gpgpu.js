@@ -20,7 +20,7 @@ if (window.yNoInputTexture && !window.yOES_texture_float) {
   window.yOES_texture_float = true;
 }*/
 //var shaders = require('Shaders');
-import { shaders } from "./vizitJs/shaders.js";
+import { shaders } from "./vizitJs/Shaders.js";
 import * as ShaderProgram from "./vizitJs/ShaderProgram.js";
 import * as Tests from "./vizitJs/Tests.js";
 import { MAX_SAMPLE_WL } from "./sound/Sound.js";
