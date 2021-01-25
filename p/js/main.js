@@ -31,7 +31,7 @@ import { yin } from "./sound/pitch/yin.js";
 import * as gpgpu from "./gpgpu.js";
 import { SoundObject, computeLatestPitch, getLatestPitch} from "./sound/Sound.js";
 import * as Pitch from "./sound/pitch/PitchDisplay.js";
-import * as Settings from "/js/Settings.js"; // sets and puts tem under window for this main thread!
+import * as Settings from "./Settings.js"; // sets and puts tem under window for this main thread!
 
 
 //import { name, draw, reportArea, reportPerimeter } from './modules/square.js';
