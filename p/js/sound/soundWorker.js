@@ -1,6 +1,6 @@
 import {  MAX_SAMPLE_WL } from "./Sound.js";
 import * as SamplesBuffer from "./SamplesBuffer.js";
-import * as Settings from "/js/Settings.js";
+import * as Settings from "../Settings.js";
 //SamplesBuffer.init(1024 * 3); // causes "uncaught ref to window!"
 /*var i = 0;
 

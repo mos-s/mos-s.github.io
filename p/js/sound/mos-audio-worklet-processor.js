@@ -20,7 +20,7 @@ import { RENDER_QUANTUM_FRAMES, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffe
 import { yin } from "./pitch/yin.js";
 import * as SamplesBuffer from "./SamplesBuffer.js";
 //import { iSamplesInBlock, MAX_SAMPLE_WL } from "./Sound.js";
-import * as Settings from "/js/Settings.js";
+import * as Settings from "../Settings.js";
 
 const yDoTiming = false;
 //const MAX_SAMPLE_WL = 512; //600 - should b f(samplerate)

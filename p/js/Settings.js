@@ -1,6 +1,6 @@
 /*
 DESCRIPTION
-    Way of making 'constant' variables available to any thread simply by importing this file with import * as Settings from "/js/Settings.js"; 
+    Way of making 'constant' variables available to any thread simply by importing this file with import * as Settings from "??/Settings.js"; 
 
 
 */
