@@ -26,27 +26,34 @@ LINKS
 */
 
 //import * as yin from "./yin.js";
-import { YINDetector } from "./pitch/yin.js";
+import { yin } from "./sound/pitch/yin.js";
+//import { gpgpu } from "./vizitJs/GPGPU.js";
+import * as gpgpu from "./gpgpu.js";
+import { SoundObject, computeLatestPitch, getLatestPitch} from "./sound/Sound.js";
+import * as Pitch from "./sound/pitch/PitchDisplay.js";
+import * as Settings from "/js/Settings.js"; // sets and puts tem under window for this main thread!
+
+
 //import { name, draw, reportArea, reportPerimeter } from './modules/square.js';
-var yDoTiming = true;
+var yDoTiming = false;
 /*navigator.mediaDevices.getUserMedia({ audio: true })
     .then(successCallback)
     .catch(failureCallback);
 On success, our successCallback will be called with a MediaStream object which we can use to access the microphone:
 */
-var iCtr = 0;
+var yComputePitch;
+var soundWorker; //web workers
+let soundObject;
 var requestAnimationFrameId = null;
 //var DEBUGCANVAS = null;
 export var iSampleRate;
 // vars from pitchdetect
-var audioContext = null;
 var isPlaying = false;
 var sourceNode = null;
 var analyser = null;
 var theBuffer = null;
-var DEBUGCANVAS = null;
-var mediaStreamSource = null;
-var detectorElem, canvasElem, canvasContext, waveCanvas, pitchElem, noteElem, detuneElem, detuneAmount;
+
+//var detectorElem, canvasElem, canvasContext, waveCanvas, pitchElem, noteElem, detuneElem, detuneAmount;
 
 if (navigator.mediaDevices) {
   //alert("getUserMedia supported.");
@@ -60,8 +67,8 @@ if (navigator.mediaDevices) {
       video: false,
     })
     .then(function (stream) {
-      init();
-      doStuff(stream);
+      init(stream);
+      //doStuff(stream);
     })
     .catch(function (err) {
       alert("The following gUM error occured: " + err);
@@ -70,69 +77,189 @@ if (navigator.mediaDevices) {
   alert("getUserMedia not supported on your browser!!");
 }
 
-function init() {
-  if (!window.requestAnimationFrame) window.requestAnimationFrame = window.webkitRequestAnimationFrame;
+function determineFastestMethod() {
+  // returns fastest method or null
+  const iTimingIts = 1000;
+  var pitchMethods = [
+    yin,
+    //gpgpu,
+    //wasm,
+  ];
+  let minMs = 1111111;
+  //var pitchMethodDurationss = [];
+  for (var i = 0; i < pitchMethods.length; i++) {
+    for (var j = 0; j < iTimingIts; j++) {
+      var ms = pitchMethods[i](a32fSin);
+      if (ms < minMs) {
+        minMs = ms;
+        minMsIndex = i;
+      }
+    }
+  }
+
+  return pitchMethods[minMsIndex];
+}
+
+function init(stream) {
+  window.stream = stream;
+  if (getRequestParam("timing") == "true") {
+    yDoTiming = true;
+  }
+
+  let pitchMethod;
+  /*if (getRequestParam("gpgpu") == "true") {
+    pitchMethod = gpgpu;
+  } else if (getRequestParam("yin") == "true") {
+    pitchMethod = yin;
+  } else {
+    pitchMethod = determineFastestMethod();
+  }*/
+  //pitchMethod = yin;
+  //setUpAudioProcessor(stream, pitchMethod);
+
+  gpgpu.exec();
+
+  soundObject = new SoundObject();
+  soundObject.setUpSoundProcessor(stream, yin);
+  makeButton();
+  let oneShot = true;
+  function startWebWorkers() {
+    if (typeof Worker !== "undefined") {
+      if (typeof soundWorker == "undefined") {
+        soundWorker = new Worker("soundWorker.js", { type: "module" });
+        //soundWorker = new Worker("exampleWorker.js", { type: "module" });
+        window.soundWorker = soundWorker;
+        //window.pitchWorker = new SharedWorker("pitchWorker.js");
+        //pitchWorker = new Worker("pitchWorker.js", { type: "module" });
+        //window.pitchWorker = pitchWorker;
+
+        var fred = 0;
+      }
+      let iCtr = 0;
+      /*soundWorker.onmessage = function (e) {
+        //document.getElementById("result").innerHTML = event.data;
+        //console.log(iCtr);
+        //iCtr++;
+        //if (yComputePitch) {
+        yComputePitch = false;
+        let inputTex = gpgpu.computeInputTexFromFloatSamples_RGBA_Worker(e.data);
+        ///gpgpu.execShader2(inputTex); // just calls Shader.run!
+        if (oneShot) {
+          oneShot = false;
+        } else {
+          // if not too near to audio interrupt then !?
+          gpgpu.getDotProductsRGBA(); // ie readpixels = should not be any wait (unless nore than samplesblock interval) for computation to finish
+        }
+       gpgpu.execShader2(inputTex); // just calls Shader.run!
+
+        let pitch = gpgpu.yin2fromC();
+        console.log("\npitch = " + pitch);
+        //}
+      };*/
+      /*soundWorker.onmessage = function (e) {
+        SoundObject.prototype.setWaveBuffer(e.data)
+      };
+      pitchWorker.onmessage = function (e) {
+        this.postMessage(1111);
+      };*/
+    } else {
+      document.getElementById("result").innerHTML = "Sorry, your browser does not support Web Workers...";
+    }
+  }
+  function stopWorker() {
+    //soundWorker.terminate();
+    /// soundWorker.postMessage(111);
+    //soundWorker = undefined;
+    yComputePitch = true;
+  } /*
+  if (!window.requestAnimationFrame) {
+    window.requestAnimationFrame = window.webkitRequestAnimationFrame;
+  }
   //kickoff? requestAnimationFrameId = window.requestAnimationFrame( updatePitch ); //??
   canvasElem = document.getElementById("output");
   canvasContext = canvasElem.getContext("2d");
   canvasContext.strokeStyle = "black";
   canvasContext.lineWidth = 1;
-
+  //soundObject.setCanvasContext(canvasContext);
+  //soundObject.onPitchDeduced = onPitchDeduced;
   DEBUGCANVAS = document.getElementById("waveform");
   if (DEBUGCANVAS) {
     waveCanvas = DEBUGCANVAS.getContext("2d");
     waveCanvas.strokeStyle = "black";
     waveCanvas.lineWidth = 1;
   }
+  */
+
+  //startWorker();
+  /*let startWorkerButton = document.getElementById("startWorker");
+  startWorkerButton.onclick = startWebWorkers;
+  let stopWorkerButton = document.getElementById("stopWorker");
+  stopWorkerButton.onclick = stopWorker;
+*/
 }
 
-function doStuff(mediaStream) {
-  var audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  // Create a source from our MediaStream
-  var source = audioContext.createMediaStreamSource(mediaStream);
-  window.iSampleRate = audioContext.sampleRate;
-  // Now create a Javascript processing node with the following parameters:
-  // 4096 = bufferSize (See notes below)
-  // 2 = numberOfInputChannels (i.e. Stereo input)
-  // 2 = numberOfOutputChannels (i.e. Stereo output)
-  //var node = audioContext.createScriptProcessor(256, 2, 2);
-  var node = audioContext.createScriptProcessor(512, 2, 2);
-  /*node.onaudioprocess = function (data) {
-    console.log(data);
+// Connect the microphone to the script processor
+/// source.connect(node);
+//source.connect(audioContext.destination);
+/// node.connect(audioContext.destination);
+//The onaudioprocess event gives us access to the Raw PCM data stream from the microphone. We can access the buffered data like so:
+
+/*node.onaudioprocess = function (data) {
+    var leftChannel = data.inputBuffer.getChannelData(0).buffer;
+    var rightChannel = data.inputBuffer.getChannelData(1).buffer;
+    var s1 = leftChannel[1];
+    var s2 = leftChannel[2];
+    var s3 = leftChannel[3];
   };*/
-  var yoffset = 0;
-  node.onaudioprocess = function (e) {
-    //var inputBuffer = e.inputBuffer;
-    //var outputBuffer = e.outputBuffer;
-    var leftChannel = e.inputBuffer.getChannelData(0); //.buffer;??
-    //var rightChannel = e.inputBuffer.getChannelData(1);//.buffer;
-    //var s1 = leftChannel[1];
-    //var s2 = leftChannel[2];
-    //var s3 = leftChannel[3];
-    canvasContext.clearRect(0, yoffset, 100, 100);
 
-    var pitch;
-    if (yDoTiming) {
-      var startNsTime = performance.now();
-      var iIts = 1000;
-      for (var i = 0; i < iIts; i++) {
-        pitch = YINDetector(leftChannel);
-      }
-      var ellapsedItsMs = performance.now() - startNsTime;
-      //alert("ellapsedItsMs = " + ellapsedItsMs);
-      console.log("ellapsedItsMs = " + ellapsedItsMs);
-    } else {
-      pitch = YINDetector(leftChannel);
+/* When we're finished recording, we must disconnect from the source and discard the script processor:
+
+node.disconnect();
+source.disconnect();
+*/
+
+function getRequestParam(name) {
+  if ((name = new RegExp("[?&]" + encodeURIComponent(name) + "=([^&]*)").exec(location.search))) return decodeURIComponent(name[1]);
+}
+
+function makeButton() {
+  const playButton = document.getElementById("playButton");
+
+  // play pause audio
+  playButton.addEventListener("click", soundObject.audioButtonHandler);
+}
+
+let delayPitchComputeToJustBeforeNextRenderMs = 0;
+var displayPitchMsTime = 0;
+window.computedAndSavedPitchMsTime = 0;
+function displayPitch(timestamp) {
+  if (soundObject != null) {
+    displayPitchMsTime = performance.now();
+    Pitch.displayPitch(getLatestPitch());
+    Pitch.displayWave();
+    let earlyMs = displayPitchMsTime - window.computedAndSavedPitchMsTime;
+    if (earlyMs < (16.66 + 2.0)) {
+      delayPitchComputeToJustBeforeNextRenderMs += (earlyMs - 1.0);
     }
+    setTimeout(computeLatestPitch, delayPitchComputeToJustBeforeNextRenderMs); //try and delay conversion until last moment before next frame!
+    console.log("\nearlyMs = " + earlyMs);
 
+    console.log("\ndelayPitchComputeToJustBeforeNextRenderMs = " + delayPitchComputeToJustBeforeNextRenderMs);
+
+  }
+  requestAnimationFrame(displayPitch);
+}
+requestAnimationFrame(displayPitch);
+
+//function onPitchDeduced(pitchParam) {
+/*
+function displayPitch(timestamp) {
+  if (canvasContext) {
+    let pitch = soundObject.deduceLatestPitch();
+    canvasContext.clearRect(0, yoffset, 100, 100);
     var xoffset = 5;
     yoffset = 600 - pitch / 2;
     var radius = 40;
-
-    /*yoffset++;
-    if (yoffset > 80) {
-      yoffset = 0;
-    }*/
     //canvasContext.clearRect(xoffset, yoffset, radius* 2, radius * 2);
     canvasContext.beginPath();
     canvasContext.arc(xoffset + radius, yoffset + radius, radius, 0, 2 * Math.PI, false);
@@ -141,35 +268,37 @@ function doStuff(mediaStream) {
     //canvasContext.lineWidth = 5;
     //canvasContext.strokeStyle = 'green';//'#000033';
     //canvasContext.stroke();
-    console.log("pitch: " + pitch + "yoffset: " + yoffset);
-
-    iCtr++;
-    //console.log("pitch=" + pitch);
-    /*    // Loop through the samples
-        for (var sample = 0; sample < inputBuffer.length; sample++) {
-            // make output equal to the same as the input
-            outputData[sample] = inputData[sample];
-      
-            // add noise to each output sample
-            outputData[sample] += ((Math.random() * 2) - 1) * 0.2;         
-          }
-    */
-  };
-  // Connect the microphone to the script processor
-  source.connect(node);
-  node.connect(audioContext.destination);
-  //The onaudioprocess event gives us access to the Raw PCM data stream from the microphone. We can access the buffered data like so:
-
-  /*node.onaudioprocess = function (data) {
-    var leftChannel = data.inputBuffer.getChannelData(0).buffer;
-    var rightChannel = data.inputBuffer.getChannelData(1).buffer;
-    var s1 = leftChannel[1];
-    var s2 = leftChannel[2];
-    var s3 = leftChannel[3];
-  };*/
+    //console.log("pitch: " + pitch + "\nyoffset: " + yoffset);
+  }
+  requestAnimationFrame(displayPitch);
 }
-/* When we're finished recording, we must disconnect from the source and discard the script processor:
 
-node.disconnect();
-source.disconnect();
+function computePitch(timestamp) {
+  if (soundObject) {
+    let pitch = soundObject.deduceLatestPitch();
+    //console.log("pitch: " + pitch + "\nyoffset: " + yoffset);
+  }
+  //console.log("timestamp = " + timestamp); // about 16ms interval.
+  //requestAnimationFrame(computePitch);
+  //setInterval(computePitch, 1000);
+}
+*/
+//requestAnimationFrame(computePitch);
+//setInterval(computePitch, 1000);
+
+/*// time yin
+let this_samplesBuffer = new Float32Array(10 * 512);
+let MAX_SAMPLE_WL = 256;
+let iMaxWlStart = 0;
+var startNsTime = performance.now();
+var iIts = 1000;
+let this_pitch;
+for (var i = 0; i < iIts; i++) {
+  this_pitch = yin(this_samplesBuffer, MAX_SAMPLE_WL, iMaxWlStart);
+  //console.log("\nthis_pitch = " + i);
+}
+var ellapsedItsMs = performance.now() - startNsTime;
+console.log("\nthis_pitch = " + this_pitch);
+console.log("\nellapsedItsMs = " + ellapsedItsMs);
+//alert("ellapsedItsMs = " + ellapsedItsMs); // this does not pop up and causes 'yInside' break in other branch!
 */

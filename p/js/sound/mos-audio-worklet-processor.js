@@ -15,41 +15,57 @@
  */
 
 import Module from "./simple-kernel.wasmmodule.js";
-import { RENDER_QUANTUM_FRAMES, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffer, SamplesBuffer } from "./js/wasm-audio-helper.js";
-import { yin } from "./js/pitch/yin.js";
+import { RENDER_QUANTUM_FRAMES, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffer, SamplesBufferWasm } from "./wasm-audio-helper.js";
+//import { iSamplesInBlock, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffer, SamplesBuffer } from "./sound/Sound.js";
+import { yin } from "./pitch/yin.js";
+import * as SamplesBuffer from "./SamplesBuffer.js";
+//import { iSamplesInBlock, MAX_SAMPLE_WL } from "./Sound.js";
+import * as Settings from "/js/Settings.js";
 
-const yDoTiming = true;
-const MAX_SAMPLE_WL = 512; //600 - should b f(samplerate)
-const iSamplesInBlock = 128;
+const yDoTiming = false;
+//const MAX_SAMPLE_WL = 512; //600 - should b f(samplerate)
+//const iSamplesInBlock = 128;
 const iBlocksInBuffer = 1;
-const iSamplesInBuffer = iSamplesInBlock * iBlocksInBuffer;
+//const iSamplesInBuffer = iSamplesInBlock * iBlocksInBuffer;
 
 const WASM_RING = 0;
 const JS_RING = 1;
 const samplesBufferMethod = JS_RING;
+//let SAB;
 /**
  * A simple demonstration of WASM-powered AudioWorkletProcessor.
  *
  * @class WASMWorkletProcessor
  * @extends AudioWorkletProcessor
  */
-class WASMWorkletProcessor extends AudioWorkletProcessor {
+//AudioWorkletProcessor = Object;
+class MosAudioWorkletProcessor extends AudioWorkletProcessor {
   /**
    * @constructor
    */
   constructor() {
     super();
+    this.port.onmessage = (event) => {
+      // Handling data from the node.
+      //console.log(event.data);
+      //SAB = event.data.sab;
+      // case "sab":
+      SamplesBuffer.init(event.data.value);
+
+      this.free2 = 0;
+    };
 
     // Allocate the buffer for the heap access. Start with stereo, but it can
     // be expanded up to 32 channels.
-    this._heapInputBuffer = new SamplesBuffer(Module, RENDER_QUANTUM_FRAMES, 1, SAMPLE_BLOCKS);
+    this._heapInputBuffer = new SamplesBufferWasm(Module, RENDER_QUANTUM_FRAMES, 1, SAMPLE_BLOCKS);
     this._heapOutputBuffer = new HeapAudioBuffer(Module, RENDER_QUANTUM_FRAMES, 2, MAX_CHANNEL_COUNT);
 
     //this.heap = Module._malloc(iSamplesInBuffer * 4);
     //this.pfSamples = Module.HEAPF32.subarray(this.heap >> 2, (this.heap + 128 * 4) >> 2);
 
     this._kernel = new Module.SimpleKernel();
-    
+
+    this.port.postMessage("Hi from mos-audio-worklet-processor!"); // to main?
   }
 
   /*fred() {
@@ -104,79 +120,65 @@ class WASMWorkletProcessor extends AudioWorkletProcessor {
 
     return true;
   }
+  /*process(inputs, outputs, parameters) {
+    // Note that this kicks off as soon as node is created (ie BEFORE connect!!)
+    // Just the left channel of the 2 d inputs array.
+//QUESTION: If we do a lot in here will next call to process be lost? 
+// Need to allow parallel use of shared memory!
+    if (inputs[0][0] != null) {
+      //if (window.soundWorker != null) {
+        //window.soundWorker.postMessage(e.inputBuffer.getChannelData(0)); // For now for simplicity we post to worker even if sound received by audioWorker rather than script processor
+        postMessage(e.inputBuffer.getChannelData(0));
+      //}
+    }
+    return true; // or will not call again!?
+  }*/
+
   process(inputs, outputs, parameters) {
     // Just the left channel of the 2 d inputs array.
-    var iIts = yDoTiming ? 1000 : 1;
-    //performance.now()
-    for (let i = 0; i < iIts; i++) {
-      switch (samplesBufferMethod) {
-        case WASM_RING:
-          //this.pfSamples.set(inputs[0][0]);
+    if (inputs[0][0] != null) {
+      var iIts = yDoTiming ? 1000 : 1;
+      //let startNsTime = window.performance.now(); window not defined
+      for (let i = 0; i < iIts; i++) {
+        switch (samplesBufferMethod) {
+          case WASM_RING:
+            //this.pfSamples.set(inputs[0][0]);
 
-          //this._heapInputBuffer.getChannelData(0).set(inputs[0][0]); //this could put new samples in correct place in circular malloced wasm buffer!?
-          let fred = this._heapInputBuffer.getChannelData(0);
-          fred.set(inputs[0][0]);
+            //this._heapInputBuffer.getChannelData(0).set(inputs[0][0]); //this could put new samples in correct place in circular malloced wasm buffer!?
+            let fred = this._heapInputBuffer.getChannelData(0);
+            fred.set(inputs[0][0]);
 
-          this._kernel.process(this._heapInputBuffer.getHeapAddress(), this._heapOutputBuffer.getHeapAddress(), 1);
+            this._kernel.process(this._heapInputBuffer.getHeapAddress(), this._heapOutputBuffer.getHeapAddress(), 1);
 
-          outputs[0][0].set(this._heapOutputBuffer.getChannelData(0));
+            outputs[0][0].set(this._heapOutputBuffer.getChannelData(0));
 
-          break;
-        case JS_RING:
-          if (this.samplesBuffer == undefined) {
-            this.iSamples = iSamplesInBlock * SAMPLE_BLOCKS;
-            this.iBlocksContainingTwoMaxWaves = Math.ceil((MAX_SAMPLE_WL * 2) / iSamplesInBlock);
-            //if (this.iBlocksContainingMaxSampleWl > SAMPLE_BLOCKS) {
-            // window.alert("iBlocksContainingMaxSampleWl > SAMPLE_BLOCKS not allowed!");
-            // }
-            this.iActualBufferLength = this.iSamples + iSamplesInBlock * this.iBlocksContainingTwoMaxWaves;
-            this.samplesBuffer = new Float32Array(this.iActualBufferLength);
-            this.iBlock = 0;
-            this.toProcess = 0;
-            this.free = 0;
-            this.free2 = 0;
-          }
-          //this.samplesBuffer.subarray(this.free, (this.free + 128)).set(inputs[0][0]);
-          this.samplesBuffer.set(inputs[0][0], this.free); // might this be faster with uint8?
+            break;
+          case JS_RING:
+            let samplesBuffer = SamplesBuffer.f32SamplesBuffer;
+            let free = samplesBuffer[SamplesBuffer.freeInd];
+            samplesBuffer.set(inputs[0][0], free); // might this be faster with uint8?
 
-          // Copy also to other end of ring buffer is appropriate
-          //if (this.free2 >= this.iSamples && this.free2 <= this.iActualBufferLength) {
-          if (this.free2 >= this.iSamples && this.free2 < this.iActualBufferLength) {
-            this.samplesBuffer.set(inputs[0][0], this.free2); // might this be faster with uint8?
-            this.free2 += iSamplesInBlock;
-          }
+            // Copy also to other end of ring buffer if appropriate
+            if (this.free2 >= SamplesBuffer.iSamples && this.free2 < SamplesBuffer.iAugmentedSamples) {
+              samplesBuffer.set(inputs[0][0], this.free2); // might this be faster with uint8?
+              this.free2 += Settings.iSamplesInBlock;
+            }
 
-          this.free += iSamplesInBlock;
-          if (this.free >= this.iSamples) {
-            this.free2 = this.free;
-            this.free = 0;
-          }
-          let iMaxWlStart = this.free - MAX_SAMPLE_WL * 2;
-          if (iMaxWlStart < 0) {
-            iMaxWlStart += this.iSamples;
-          }
-          if (iMaxWlStart >= 0) {
-            let pitch = yin(this.samplesBuffer, MAX_SAMPLE_WL, iMaxWlStart);
-            //console.log("pitch = " + pitch);
-          }
-          //subarray(startByteOffset >> BYTES_PER_UNIT, endByteOffset >> BYTES_PER_UNIT);
-          /*let a = [1,  2,  3,  4,  5]
-let b = [10, 20, 30]
+            free += Settings.iSamplesInBlock; 
+            if (free >= SamplesBuffer.iSamples) {
+              this.free2 = free;
+              free = 0;
+            }
+            samplesBuffer[SamplesBuffer.freeInd] = free;
 
-a.splice(0, b.length, ...b)*/
-
-          break;
+            break;
+        }
       }
     }
-    if (yDoTiming) {
-      //var ellapsedItsMs = performance.now() - startNsTime;
-      //alert("ellapsedItsMs = " + ellapsedItsMs);
-     // console.log("ellapsedItsMs = " + ellapsedItsMs);
-     //this.fred();
-    }
-
     return true;
   }
 }
 
-registerProcessor("wasm-worklet-processor", WASMWorkletProcessor);
+//}
+
+registerProcessor("mos-audio-worklet-processor", MosAudioWorkletProcessor);

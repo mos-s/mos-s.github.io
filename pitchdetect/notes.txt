@@ -20,3 +20,7 @@ PLAN
 
 
 LINKS
+
+
+CURRENT STATE
+    Works fine with orinal.js
