@@ -239,6 +239,9 @@ function initShader() {
   let retVal = false;
   gpgpUtility = new vizit.utility.GPGPUtility(iOutputTexWidth, iOutputTexHeight, { premultipliedAlpha: false });
   if (gpgpUtility.isFloatingTexture()) {
+    let fred = gpgpUtility.getFloatingTexture();
+    alert("gpgpUtility.getFloatingTexture() = " + fred);
+
     // Height and width are set in the constructor.
     outputTexture = gpgpUtility.makeTexture(window.yOES_texture_float ? WebGLRenderingContext.FLOAT : WebGLRenderingContext.UNSIGNED_BYTE, null);
     //outputTexture = gpgpUtility.makeSizedTexture(2, 2, WebGLRenderingContext.FLOAT, null);
@@ -246,14 +249,14 @@ function initShader() {
 
     bufferStatus = gpgpUtility.frameBufferIsComplete();
 
-    //if (bufferStatus.isComplete) {
+    if (bufferStatus.isComplete) {
       //initializer = new ShaderProgram(gpgpUtility, fragShaderSrc);
       //initializer = shaderProgram.ShaderProgram(gpgpUtility, fragShaderSrc);
       ShaderProgram.init(gpgpUtility, fragShaderSrc);
       retVal = true;
-    ///} else {
-    ///  alert(bufferStatus.message);
-    ///}
+    } else {
+      alert(bufferStatus.message);
+    }
   } else {
     alert("Floating point textures are not supported.");
   }
