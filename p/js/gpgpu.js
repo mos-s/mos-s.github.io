@@ -246,14 +246,14 @@ function initShader() {
 
     bufferStatus = gpgpUtility.frameBufferIsComplete();
 
-    if (bufferStatus.isComplete) {
+    //if (bufferStatus.isComplete) {
       //initializer = new ShaderProgram(gpgpUtility, fragShaderSrc);
       //initializer = shaderProgram.ShaderProgram(gpgpUtility, fragShaderSrc);
       ShaderProgram.init(gpgpUtility, fragShaderSrc);
       retVal = true;
-    } else {
-      alert(bufferStatus.message);
-    }
+    ///} else {
+    ///  alert(bufferStatus.message);
+    ///}
   } else {
     alert("Floating point textures are not supported.");
   }
