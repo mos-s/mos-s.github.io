@@ -52,7 +52,7 @@ export function displayWave() {
   // TODO: Paint confidence meter on canvasElem here.
 
   var samplesBuffer, freeInd;
-  // We assume here that MAX_SAMPLE_WL * 2 is at least width of wave display
+  // We assume here that window.maxSampleWl * 2 is at least width of wave display
   if (window.ySharedMemory) {
     samplesBuffer = SamplesBufferz.f32SamplesBuffer;
     freeInd = samplesBuffer[SamplesBufferz.freeInd];
@@ -61,7 +61,7 @@ export function displayWave() {
       return;
     } else {
       samplesBuffer = pitchSamplesBuffer;
-      freeInd = 1024; //SamplesBufferz.
+      freeInd = window.maxSampleWl * 2; 
     }
   }
   var ind = freeInd - 1;

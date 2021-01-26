@@ -89,8 +89,8 @@ export function gpgpu(float32AudioBuffer) {
       testRtn = Tests.testDotProducts;
       break;
     case dotProductsUniformFloatArrayInput:
-      window.max_wl = 64;
-      iTexWidth = window.max_wl;
+      window.maxSampleWl = 64;
+      iTexWidth = window.maxSampleWl;
       iTexHeight = 1;
 
       window.yNoInputTexture = true;
@@ -104,8 +104,8 @@ export function gpgpu(float32AudioBuffer) {
 
       break;
     case floatInputAndOutputTexDotProduct:
-      window.max_wl = 512;
-      iTexWidth = window.max_wl;
+      window.maxSampleWl = 512;
+      iTexWidth = window.maxSampleWl;
       iTexHeight = 1;
       window.yNoInputTexture = false;
       window.yOES_texture_float = true;

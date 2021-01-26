@@ -1,4 +1,4 @@
-import {  MAX_SAMPLE_WL } from "./Sound.js";
+//import {  window.maxSampleWl } from "./Sound.js";
 import * as SamplesBuffer from "./SamplesBuffer.js";
 import * as Settings from "../Settings.js";
 //SamplesBuffer.init(1024 * 3); // causes "uncaught ref to window!"
@@ -12,11 +12,11 @@ function timedCount() {
 
 timedCount();
 */
-//import { iSamplesInBlock, SAMPLE_BLOCKS, MAX_SAMPLE_WL } from "./js/sound/Sound.js";
+//import { iSamplesInBlock, SAMPLE_BLOCKS, window.maxSampleWl } from "./js/sound/Sound.js";
 //import * as gpgpu from "../gpgpu.js";
 //import { yin } from "./js/sound/pitch/yin.js";
 /*
-const MAX_SAMPLE_WL = 512; //600 - should b f(samplerate)
+const window.maxSampleWl = 512; //600 - should b f(samplerate)
 const iSamplesInBlock = 512; //256; //128;
 const SAMPLE_BLOCKS = 16;
 
@@ -52,7 +52,7 @@ onmessage = function (e) {
     let inputs = e.data;
     if (this_samplesBuffer == undefined) {
       this_iSamples = iSamplesInBlock * SAMPLE_BLOCKS;
-      this.iBlocksContainingTwoMaxWaves = Math.ceil((MAX_SAMPLE_WL * 2) / iSamplesInBlock);
+      this.iBlocksContainingTwoMaxWaves = Math.ceil((window.maxSampleWl * 2) / iSamplesInBlock);
       //if (this.iBlocksContainingMaxSampleWl > SAMPLE_BLOCKS) {
       // window.alert("iBlocksContainingMaxSampleWl > SAMPLE_BLOCKS not allowed!");
       // }
@@ -92,11 +92,11 @@ onmessage = function (e) {
     }
 
    
-    let iMaxWlStart = free - MAX_SAMPLE_WL * 2;
+    let iMaxWlStart = free - window.maxSampleWl * 2;
     if (iMaxWlStart < 0) {
       iMaxWlStart += this_iSamples;
     }
-    var iWidth = 512 * 2;//window.max_wl * 2;
+    var iWidth = 512 * 2;//window.maxSampleWl * 2;
     //var iByteWidth = 4;//iWidth * 4; // float is 4 bytes
     //works - var slice = this_samplesBuffer.slice(iMaxWlStart, iMaxWlStart + iWidth) ;
     //var fInputTexBuffer = new Float32Array(slice, iMaxWlStart * 4, iWidth); // can use dataview!? also - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array/Float32Array
@@ -131,11 +131,11 @@ onmessage = function (e) {
   samplesBuffer[SamplesBuffer.freeInd] = free;
 
   //---------------------------Send pitch samples to main thread on every samples block! ----------------------------
-  let iMaxWlStart = free - MAX_SAMPLE_WL * 2;
+  let iMaxWlStart = free - Settings.maxSampleWl * 2;
   if (iMaxWlStart < 0) {
     iMaxWlStart += SamplesBuffer.iSamples;//iSamplesInBlock; //this_iSamples;
   }
-  var iWidth = 512 * 2; //window.max_wl * 2;
+  var iWidth = 512 * 2; //window.maxSampleWl * 2;
   //var iByteWidth = 4;//iWidth * 4; // float is 4 bytes
   //works - var slice = this_samplesBuffer.slice(iMaxWlStart, iMaxWlStart + iWidth) ;
   //var fInputTexBuffer = new Float32Array(slice, iMaxWlStart * 4, iWidth); // can use dataview!? also - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array/Float32Array

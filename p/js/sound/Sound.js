@@ -4,13 +4,14 @@ import * as gpgpu from "../gpgpu.js";
 import * as ShaderProgram from "../vizitJs/ShaderProgram.js";
 //import * as SamplesBuffer from "./SamplesBuffer.js";
 //import { SamplesBuffer } from "./SamplesBuffer.js";
+import * as Pitch from "./pitch/Pitch.js"
 import * as SamplesBuffer from "./SamplesBuffer.js";
 export let SamplesBufferz = SamplesBuffer;
 
 const yDoTiming = true;
 let yInsideRtn = false;
 
-export const MAX_SAMPLE_WL = 512; //600 - should b f(samplerate)
+//export const window.maxSampleWl = 512; //600 - should b f(samplerate)
 //export const iSamplesInBlock = 512; //128; //512; //256; //128;
 let this_samplesBuffer;
 let ringBuffer;
@@ -60,7 +61,7 @@ export class SoundObject extends Object {
       let inputs = new Float32Array(e.inputBuffer.getChannelData(0));
       if (this_samplesBuffer == undefined) {
         this_iSamples = iSamplesInBlock * SAMPLE_BLOCKS;
-        this.iBlocksContainingTwoMaxWaves = Math.ceil((MAX_SAMPLE_WL * 2) / iSamplesInBlock);
+        this.iBlocksContainingTwoMaxWaves = Math.ceil((window.maxSampleWl * 2) / iSamplesInBlock);
         //if (this.iBlocksContainingMaxSampleWl > SAMPLE_BLOCKS) {
         // window.alert("iBlocksContainingMaxSampleWl > SAMPLE_BLOCKS not allowed!");
         // }
@@ -93,13 +94,13 @@ export class SoundObject extends Object {
       }
 
       // copy to tex
-      let iMaxWlStart = free - MAX_SAMPLE_WL * 2;
+      let iMaxWlStart = free - window.maxSampleWl * 2;
       if (iMaxWlStart < 0) {
         iMaxWlStart += this_iSamples;
       } else {
         yEnoughData = true;
       }
-      //  this_pitch = yin(this_samplesBuffer, MAX_SAMPLE_WL, iMaxWlStart);
+      //  this_pitch = yin(this_samplesBuffer, window.maxSampleWl, iMaxWlStart);
       if (yEnoughData) {
         //if (inputTex == null) {
         //inputTex = gpgpu.computeInputTexFromFloatSamples(this_samplesBuffer, iMaxWlStart);
@@ -136,7 +137,7 @@ export class SoundObject extends Object {
 
   deduceLatestPitch() {
     if (free) {
-      let iMaxWlStart = free - MAX_SAMPLE_WL * 2;
+      let iMaxWlStart = free - window.maxSampleWl * 2;
       if (iMaxWlStart < 0) {
         iMaxWlStart += this_iSamples;
       }
@@ -144,7 +145,7 @@ export class SoundObject extends Object {
       if (iMaxWlStart >= 0) {
         //check if called in here again!!??
         // if (iCtr2 & 1) {
-        this.pitch = yin(this_samplesBuffer, MAX_SAMPLE_WL, iMaxWlStart);
+        this.pitch = yin(this_samplesBuffer, window.maxSampleWl, iMaxWlStart);
         console.log("pitch = " + this.pitch);
         console.log("\niMaxWlStart = " + iMaxWlStart);
         return this.pitch;
@@ -158,6 +159,8 @@ export class SoundObject extends Object {
   async setUpSoundProcessor(callback) {
     //mediaStream, pitchMethod_) {
     // ie audioWorklet or scriptProcessor?
+    Pitch.init();
+  
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
     //setCapabilities();
@@ -340,7 +343,7 @@ First attempt can assume audioWorker but no shared memory! then will work also f
         var inputs = e.inputBuffer.getChannelData(0); //.buffer; //.buffer;??
         if (this_samplesBuffer == undefined) {
           this_iSamples = iSamplesInBlock * SAMPLE_BLOCKS;
-          this.iBlocksContainingTwoMaxWaves = Math.ceil((MAX_SAMPLE_WL * 2) / iSamplesInBlock);
+          this.iBlocksContainingTwoMaxWaves = Math.ceil((window.maxSampleWl * 2) / iSamplesInBlock);
           //if (this.iBlocksContainingMaxSampleWl > SAMPLE_BLOCKS) {
           // window.alert("iBlocksContainingMaxSampleWl > SAMPLE_BLOCKS not allowed!");
           // }
@@ -453,26 +456,20 @@ export function computeLatestPitch() {
   if (window.ySharedMemory) {
     samplesBuffer = SamplesBuffer.f32SamplesBuffer;
     let free = samplesBuffer[SamplesBuffer.freeInd];
-    let iMaxWlStart = free - MAX_SAMPLE_WL * 2;
+    let iMaxWlStart = free - window.maxSampleWl * 2;
     if (iMaxWlStart < 0) {
       iMaxWlStart += SamplesBuffer.iSamples;
     }
-    pitchSamplesBuffer = new Float32Array(samplesBuffer.buffer, iMaxWlStart * 4, MAX_SAMPLE_WL * 2); // start index is in bytes but not length
+    pitchSamplesBuffer = new Float32Array(samplesBuffer.buffer, iMaxWlStart * 4, window.maxSampleWl * 2); // start index is in bytes but not length
   } else {
     samplesBuffer = SamplesBuffer.f32SamplesBuffer;
   }
   if (pitchSamplesBuffer != null) {
-    let inputTex = gpgpu.computeInputTexFromFloatSamples_RGBA_Worker(pitchSamplesBuffer);
-    gpgpu.execShader2(inputTex); // just calls Shader.run!
-    gpgpu.getDotProductsRGBA(); // ie readpixels = should not be any wait (unless nore than samplesblock interval) for computation to finish
-
-    //var startNsTime = performance.now();
-    let pitch = gpgpu.yin2fromC(); // takes about 0.5ms on lenovo
-    samplesBuffer[SamplesBuffer.pitchInd] = pitch;
-    window.computedAndSavedPitchMsTime = performance.now();
-
-    //var ellapsedItsMs = performance.now() - startNsTime;
+    let pitch = Pitch.computeMethod(pitchSamplesBuffer);
+    SamplesBuffer.f32SamplesBuffer[SamplesBuffer.pitchInd] = pitch; // maybe should be in caller?
     var nowNsTime = performance.now();
+    window.computedAndSavedPitchMsTime = nowNsTime;
+
     var ellapsedItsMs = nowNsTime - prevNsTime;
     prevNsTime = nowNsTime;
     console.log("\npitch = " + pitch);

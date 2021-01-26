@@ -25,7 +25,7 @@ audio into it, and schedule the values for 'isRecording' parameter:
       );
 
       yourSourceNode.connect(recorderNode);
-      recorderNode.connect(audioContext.destination);
+      recorderNode.connect(audioContext.destination); // should pass sound straight through independently of recorderNode (presumably will mix them!)
 
       recorderNode.port.onmessage = (e) => {
         if (e.data.eventType === 'data') {

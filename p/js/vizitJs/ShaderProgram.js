@@ -58,7 +58,7 @@ export function init(gpgpUtility_, fragShaderSrc) {
       gl.uniform1f(widthHandle, width); // Only needed for first example it computes from tex coords i, j (it has no input array)
       gl.uniform1f(heightHandle, height); // Only needed for first example it computes from tex coords i, j (it has no input array)
       var aSamples = [];
-      var iSamples = window.max_wl * 2;
+      var iSamples = window.maxSampleWl * 2;
       for (var i = 0; i < iSamples; i++) {
         aSamples[i] = i; 
       }

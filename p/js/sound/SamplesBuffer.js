@@ -5,8 +5,8 @@ DESCRIPTION
 
 */
 
-//import { iSamplesInBlock, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffer, SamplesBuffer, MAX_SAMPLE_WL } from "sound/Sound.js";
-import { SAMPLE_BLOCKS, MAX_SAMPLE_WL} from "./Sound.js";
+//import { iSamplesInBlock, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffer, SamplesBuffer, window.maxSampleWl } from "sound/Sound.js";
+import { SAMPLE_BLOCKS} from "./Sound.js";
 import * as Settings from "../Settings.js"; // because this is called from other (ie non main) threads!
 
 export let iVar = 11;
@@ -17,12 +17,12 @@ export let freeInd, toProcessInd, pitchInd;
 const iNumberVars = 3; // Increment this if add var!!!
 
 export let iSamples, iAugmentedSamples; // do not change after init!
-export let iWrapAvoidSamples; // = Math.ceil((MAX_SAMPLE_WL * 2) / iSamplesInBlock) * iSamplesInBlock;
+export let iWrapAvoidSamples; // = Math.ceil((window.maxSampleWl * 2) / iSamplesInBlock) * iSamplesInBlock;
 
 export function init(iSamplesOrSharedArrayBuffer) {
   //We call this from any module which imports this module!
   // Typically from main thread once with no of samples and eg workers with existing shared array buffer.
-  iWrapAvoidSamples = Math.ceil((MAX_SAMPLE_WL * 2) / Settings.iSamplesInBlock) * Settings.iSamplesInBlock;
+  iWrapAvoidSamples = Math.ceil((Settings.maxSampleWl * 2) / Settings.iSamplesInBlock) * Settings.iSamplesInBlock;
 
   /*if (typeof(window) == "undefined") { //if (window == null) {
     window = {};

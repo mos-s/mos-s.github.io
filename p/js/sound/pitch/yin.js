@@ -165,7 +165,7 @@ export function yinOld(float32AudioBuffer) {
 }
 //}
 const audioPacketSamples = 256;
-const MAX_WL = 600;
+//const window.maxSampleWl = 600;
 export function yinNew(float32AudioBuffer) {
   // with ring buffer
   // Set buffer size to the highest power of two below the provided buffer's length.
@@ -174,7 +174,7 @@ export function yinNew(float32AudioBuffer) {
   //bufferSize /= 2;
   iRingPackets = 3; //??
   if (iRingPackets == null) {
-    iRingPackets = Maths.ceil(MAX_WL / audioPacketSamples);
+    iRingPackets = Maths.ceil(window.maxSampleWl / audioPacketSamples);
     let ringPackets = new float32AudioBuffer[iRingPackets]();
     iCurPacket = 0;
   }

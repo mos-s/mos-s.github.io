@@ -23,7 +23,7 @@ if (window.yNoInputTexture && !window.yOES_texture_float) {
 import { shaders } from "./vizitJs/Shaders.js";
 import * as ShaderProgram from "./vizitJs/ShaderProgram.js";
 import * as Tests from "./vizitJs/Tests.js";
-import { MAX_SAMPLE_WL } from "./sound/Sound.js";
+//import { window.maxSampleWl } from "./sound/Sound.js";
 
 var _1000j_Plus_i_NoInputTex = 0;
 var _1000j_Plus_i_FloatInputAndOutputTex = 1;
@@ -62,6 +62,8 @@ iOutputTexWidth = 64; //iDim;
 iOutputTexHeight = 1; //iDim;
 
 export function exec() {
+  iOutputTexWidth = window.maxSampleWl;
+  iOutputTexHeight = 1;
   switch (iTest) {
     case _1000j_Plus_i_NoInputTex:
       window.yNoInputTexture = true;
@@ -106,9 +108,6 @@ export function exec() {
       }
       break;
     case dotProductsUniformFloatArrayInput:
-      window.max_wl = 64;
-      iOutputTexWidth = window.max_wl;
-      iOutputTexHeight = 1;
 
       window.yNoInputTexture = true;
       window.yOES_texture_float = true;
@@ -123,15 +122,12 @@ export function exec() {
       }
       break;
     case floatInputAndOutputTexDotProduct:
-      window.max_wl = 512.0;
-      //iTexWidth = window.max_wl;
-      iOutputTexWidth = window.max_wl;
-      iOutputTexHeight = 1;
+      //iTexWidth = window.maxSampleWl;
       window.yNoInputTexture = false;
       window.yOES_texture_float = true;
       computeInputTexture = computeTexDotProductInputTextureSineWave;
-      //fragShaderSrc = shaders.buildShader("floatInputAndOutputTexDotProduct", window.max_wl);
-      fragShaderSrc = shaders.floatInputAndOutputTexDotProduct(window.max_wl);
+      //fragShaderSrc = shaders.buildShader("floatInputAndOutputTexDotProduct", window.maxSampleWl);
+      fragShaderSrc = shaders.floatInputAndOutputTexDotProduct(window.maxSampleWl);
       testRtn = Tests.testDotProducts;
       //SyDoTiming = false;
       if (initShader()) {
@@ -140,15 +136,13 @@ export function exec() {
       break;
 
     case floatInputAndOutputTexDotProduct4:
-      window.max_wl = 512.0;
-      //iTexWidth = window.max_wl;
-      iOutputTexWidth = window.max_wl / 4;
-      iOutputTexHeight = 1;
+      //iTexWidth = window.maxSampleWl;
+      iOutputTexWidth = window.maxSampleWl / 4;
       window.yNoInputTexture = false;
       window.yOES_texture_float = true;
       computeInputTexture = computeTexDotProductInputTextureSineWave;
-      //fragShaderSrc = shaders.buildShader("floatInputAndOutputTexDotProduct", window.max_wl);
-      fragShaderSrc = shaders.floatInputAndOutputTexDotProduct4(window.max_wl);
+      //fragShaderSrc = shaders.buildShader("floatInputAndOutputTexDotProduct", window.maxSampleWl);
+      fragShaderSrc = shaders.floatInputAndOutputTexDotProduct4(window.maxSampleWl);
       testRtn = Tests.testDotProducts;
       //SyDoTiming = false;
       if (initShader()) {
@@ -157,15 +151,12 @@ export function exec() {
       break;
 
     case floatInputAndOutputTexDotProductFunction:
-      window.max_wl = 512.0;
-      //iTexWidth = window.max_wl;
-      iOutputTexWidth = window.max_wl;
-      iOutputTexHeight = 1;
+      //iTexWidth = window.maxSampleWl;
       window.yNoInputTexture = false;
       window.yOES_texture_float = true;
       computeInputTexture = null; //??computeTexDotProductInputTextureSineWave;
-      //fragShaderSrc = shaders.buildShader("floatInputAndOutputTexDotProduct", window.max_wl);
-      fragShaderSrc = shaders.floatInputAndOutputTexDotProduct(window.max_wl);
+      //fragShaderSrc = shaders.buildShader("floatInputAndOutputTexDotProduct", window.maxSampleWl);
+      fragShaderSrc = shaders.floatInputAndOutputTexDotProduct(window.maxSampleWl);
       testRtn = Tests.testDotProducts;
       yDoTiming = false;
       if (initShader()) {
@@ -173,15 +164,12 @@ export function exec() {
       }
       break;
     case floatInputAndOutputTexDotProductFunctionRgba:
-      window.max_wl = 512.0;
-      //iTexWidth = window.max_wl;
-      iOutputTexWidth = window.max_wl;
-      iOutputTexHeight = 1;
+      //iTexWidth = window.maxSampleWl;
       window.yNoInputTexture = false;
       window.yOES_texture_float = true;
       computeInputTexture = null; //??computeTexDotProductInputTextureSineWave;
-      //fragShaderSrc = shaders.buildShader("floatInputAndOutputTexDotProduct", window.max_wl);
-      fragShaderSrc = shaders.floatInputAndOutputTexDotProduct_RGBA(window.max_wl);
+      //fragShaderSrc = shaders.buildShader("floatInputAndOutputTexDotProduct", window.maxSampleWl);
+      fragShaderSrc = shaders.floatInputAndOutputTexDotProduct_RGBA(window.maxSampleWl);
       testRtn = Tests.testDotProducts;
       yDoTiming = false;
       if (initShader()) {
@@ -189,15 +177,12 @@ export function exec() {
       }
       break;
     case floatUniformInputAndTexOutputYin:
-      window.max_wl = 512.0;
-      //iTexWidth = window.max_wl;
-      iOutputTexWidth = window.max_wl;
-      iOutputTexHeight = 1;
+      //iTexWidth = window.maxSampleWl;
       window.yNoInputTexture = true;
       window.yOES_texture_float = true;
       computeInputTexture = null; //??computeTexDotProductInputTextureSineWave;
-      //fragShaderSrc = shaders.buildShader("floatInputAndOutputTexDotProduct", window.max_wl);
-      fragShaderSrc = shaders.floatUniformInputAndTexOutputYin(window.max_wl);
+      //fragShaderSrc = shaders.buildShader("floatInputAndOutputTexDotProduct", window.maxSampleWl);
+      fragShaderSrc = shaders.floatUniformInputAndTexOutputYin(window.maxSampleWl);
       testRtn = Tests.testDotProducts;
       yDoTiming = false;
       if (initShader()) {
@@ -205,15 +190,13 @@ export function exec() {
       }
       break;
     case floatInputAndOutputTexDotProductFunctionRgba2:
-      window.max_wl = 512.0;
-      //iTexWidth = window.max_wl;
-      iOutputTexWidth = window.max_wl / 4;
-      iOutputTexHeight = 1;
+       //iTexWidth = window.maxSampleWl;
+      iOutputTexWidth = yWriteToFloatTexture? window.maxSampleWl / 4 : window.maxSampleWl;
       window.yNoInputTexture = false;
       window.yOES_texture_float = true;
       computeInputTexture = null; //??computeTexDotProductInputTextureSineWave;
-      //fragShaderSrc = shaders.buildShader("floatInputAndOutputTexDotProduct", window.max_wl);
-      fragShaderSrc = shaders.floatInputAndOutputTexDotProduct_RGBA3(window.max_wl);
+      //fragShaderSrc = shaders.buildShader("floatInputAndOutputTexDotProduct", window.maxSampleWl);
+      fragShaderSrc = shaders.floatInputAndOutputTexDotProduct_RGBA3(window.maxSampleWl);
       testRtn = getDotProductsRGBA; //Tests.testDotProducts;
       yDoTiming = false;
       if (initShader()) {
@@ -239,8 +222,8 @@ function initShader() {
   let retVal = false;
   gpgpUtility = new vizit.utility.GPGPUtility(iOutputTexWidth, iOutputTexHeight, { premultipliedAlpha: false });
   if (gpgpUtility.isFloatingTexture()) {
-    let fred = gpgpUtility.getFloatingTexture();
-    alert("gpgpUtility.getFloatingTexture() = " + fred);
+    //let fred = gpgpUtility.getFloatingTexture();
+    //alert("gpgpUtility.getFloatingTexture() = " + fred);
 
     // Height and width are set in the constructor.
     outputTexture = gpgpUtility.makeTexture(window.yOES_texture_float ? WebGLRenderingContext.FLOAT : WebGLRenderingContext.UNSIGNED_BYTE, null);
@@ -431,7 +414,7 @@ export function computeInputTexFromFloatSamples(samplesBuffer, startindex) {
 }
 
 export function computeInputTexFromFloatSamples_RGBA(samplesBuffer, startindex) {
-  var iWidth = window.max_wl * 2;
+  var iWidth = window.maxSampleWl * 2;
   //var iByteWidth = 4;//iWidth * 4; // float is 4 bytes
   var fInputTexBuffer = new Float32Array(samplesBuffer.buffer, startindex * 4, iWidth); // can use dataview!? also - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array/Float32Array
   //console.log("ZZ=" + fInputTexBuffer[startindex]);
@@ -461,19 +444,19 @@ export function computeInputTexFromFloatSamples_RGBA(samplesBuffer, startindex) 
 
 let fJsResults;
 export function computeInputTexFromFloatSamples_RGBA_Worker(samplesBuffer) {
-  var iWidth = MAX_SAMPLE_WL * 2;
+  var iWidth = window.maxSampleWl * 2;
   //var iByteWidth = 4;//iWidth * 4; // float is 4 bytes
   //var fInputTexBuffer = new Float32Array(samplesBuffer.buffer, startindex * 4, iWidth); // can use dataview!? also - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array/Float32Array
 
   /*
   if (samplesBuffer[3] != 0) {
     if (fJsResults == null) {
-      fJsResults = new Float32Array(window.max_wl);
+      fJsResults = new Float32Array(window.maxSampleWl);
     }
     let fTotal;
-    for (let i = 0; i < window.max_wl; i++) {
+    for (let i = 0; i < window.maxSampleWl; i++) {
       fTotal = 0;
-      for (let j = 0; j < window.max_wl; j++) {
+      for (let j = 0; j < window.maxSampleWl; j++) {
         let fDiff = samplesBuffer[j] - samplesBuffer[j + i]; //pixelA.r - pixelB.r;
         fTotal += fDiff * fDiff;
       }
@@ -502,14 +485,14 @@ export function getDotProducts() {
 
   if (resultBuffer == null) {
     // One each for RGBA component of a pixel
-    //resultBuffer = new Float32Array(4 * window.max_wl);
-    resultBuffer = new Float32Array(window.max_wl);
+    //resultBuffer = new Float32Array(4 * window.maxSampleWl);
+    resultBuffer = new Float32Array(window.maxSampleWl);
   }
 
   gl.readPixels(
     0, // x-coord of lower left corner
     0, // y-coord of lower left corner
-    window.max_wl, // width of the block
+    window.maxSampleWl, // width of the block
     1, // height of the block
     gl.RGBA, // Format of pixel data.
     gl.FLOAT, // Data type of the pixel data, must match makeTexture
@@ -524,13 +507,13 @@ export function getDotProductsRGBA() {
 
   if (resultBuffer == null) {
     // One each for RGBA component of a pixel
-    resultBuffer = new Float32Array(window.max_wl);
+    resultBuffer = new Float32Array(window.maxSampleWl);
   }
 
   gl.readPixels(
     0, // x-coord of lower left corner
     0, // y-coord of lower left corner
-    window.max_wl / 4, // width of the block
+    window.maxSampleWl / 4, // width of the block
     1, // height of the block
     gl.RGBA, // Format of pixel data.
     gl.FLOAT, // Data type of the pixel data, must match makeTexture
@@ -540,7 +523,8 @@ export function getDotProductsRGBA() {
     var fred = 0;
     //resultBuffer = new Float32Array(fJsResults);;
   }
-  return true; // for now
+  //return true; // for now
+  return resultBuffer;
 }
 
 export function yin2fromTs() {
@@ -548,7 +532,7 @@ export function yin2fromTs() {
   const sampleRate = 48000;
   const probabilityThreshold = 0.1;
 
-  const yinBufferLength = window.max_wl;
+  const yinBufferLength = window.maxSampleWl;
   /*if (yinBuffer == null) {
     yinBuffer = resultBuffernew Float32Array(yinBufferLength);
   }*/
@@ -557,7 +541,7 @@ export function yin2fromTs() {
   let tau;
 
   /*let resultBufferIndex = 0;
-  for (let i = 0; i < window.max_wl; i++) {
+  for (let i = 0; i < window.maxSampleWl; i++) {
     yinBuffer[i] = resultBuffer[resultBufferIndex];
     resultBufferIndex += 1; //4;
   }*/
@@ -651,7 +635,7 @@ export function yin2fromC() {
   const sampleRate = 48000;
   const probabilityThreshold = 0.1;
 
-  const yinBufferLength = window.max_wl;
+  const yinBufferLength = window.maxSampleWl;
   if (yinBuffer == null) {
     yinBuffer = new Float32Array(yinBufferLength);
   }
@@ -660,7 +644,7 @@ export function yin2fromC() {
   let tau;
 
   let resultBufferIndex = 0;
-  for (let i = 0; i < window.max_wl; i++) {
+  for (let i = 0; i < window.maxSampleWl; i++) {
     yinBuffer[i] = resultBuffer[resultBufferIndex];
     resultBufferIndex += 1; //4;
   }

@@ -7,7 +7,7 @@ IMPROVEMENTS
     import buffer dims from Sound to deduce buffer size and var locations? (poss?)
 */
 //import { iSamplesInBlock, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffer, SamplesBuffer } from "../Sound.js";
-import { iSamplesInBlock, MAX_SAMPLE_WL } from "../Sound.js";
+import { iSamplesInBlock, window.maxSampleWl } from "../Sound.js";
 import * as SamplesBuffer from "../SamplesBuffer.js";
 //import { SamplesBuffer } from "../SamplesBuffer.js";
 //import * as Fred from "../Fred.js";
@@ -34,16 +34,16 @@ onmessage = function (e) {
         let samplesBuffer = SamplesBuffer.f32SamplesBuffer;
 
         let free = samplesBuffer[SamplesBuffer.freeInd];
-        let iMaxWlStart = free - MAX_SAMPLE_WL * 2;
+        let iMaxWlStart = free - window.maxSampleWl * 2;
         if (iMaxWlStart < 0) {
           iMaxWlStart += SamplesBuffer.iSamples;
         }
 
         var startNsTime = performance.now();
 
-        let pitch = yin(samplesBuffer, MAX_SAMPLE_WL, iMaxWlStart);
+        let pitch = yin(samplesBuffer, window.maxSampleWl, iMaxWlStart);
 
-        //let pitch = pitchByShader(new Float32Array(samplesBuffer, iMaxWlStart, MAX_SAMPLE_WL * 2));
+        //let pitch = pitchByShader(new Float32Array(samplesBuffer, iMaxWlStart, window.maxSampleWl * 2));
 
         //postMessage(pitch); //ie to main
         samplesBuffer[SamplesBuffer.pitchInd] = pitch;

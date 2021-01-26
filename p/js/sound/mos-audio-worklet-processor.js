@@ -19,11 +19,11 @@ import { RENDER_QUANTUM_FRAMES, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffe
 //import { iSamplesInBlock, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffer, SamplesBuffer } from "./sound/Sound.js";
 import { yin } from "./pitch/yin.js";
 import * as SamplesBuffer from "./SamplesBuffer.js";
-//import { iSamplesInBlock, MAX_SAMPLE_WL } from "./Sound.js";
+//import { iSamplesInBlock, window.maxSampleWl } from "./Sound.js";
 import * as Settings from "../Settings.js";
 
 const yDoTiming = false;
-//const MAX_SAMPLE_WL = 512; //600 - should b f(samplerate)
+//const window.maxSampleWl = 512; //600 - should b f(samplerate)
 //const iSamplesInBlock = 128;
 const iBlocksInBuffer = 1;
 //const iSamplesInBuffer = iSamplesInBlock * iBlocksInBuffer;

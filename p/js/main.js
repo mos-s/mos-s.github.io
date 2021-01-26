@@ -7,10 +7,10 @@ TODO
   game loop? pitch queue?
   ring buffer
 
-MAX_WL
+window.maxSampleWl
   In audioworklet allows 128 sample min buff otherwise processor allows minimum of 256 samples.
   The higher the sample rate the lower the latency due to this buffer!
-  However our pitch algorithm needs MAX_WL samples to detect lowest note in range (eg recorder).
+  However our pitch algorithm needs window.maxSampleWl samples to detect lowest note in range (eg recorder).
   So we need to queue the buffers (ie need ring buffer) to cover the lowest notes!
   It might be possible to modify algorithm so looks for high notes (up to length of available samples - eg one native buffer's worth) first and then lower notes.
     What kind of effect on reliability does shorter correlation range have?
@@ -117,7 +117,10 @@ function init(stream) {
   //pitchMethod = yin;
   //setUpAudioProcessor(stream, pitchMethod);
 
-  gpgpu.exec();
+ /*if (window.iPitchMethod == Settings.iGpgpuMethod) {
+    gpgpu.exec();
+  }
+*/
 
   soundObject = new SoundObject();
   soundObject.setUpSoundProcessor(stream, yin);
@@ -241,6 +244,7 @@ function displayPitch(timestamp) {
     if (earlyMs < (16.66 + 2.0)) {
       delayPitchComputeToJustBeforeNextRenderMs += (earlyMs - 1.0);
     }
+    delayPitchComputeToJustBeforeNextRenderMs = 0; // during dev
     setTimeout(computeLatestPitch, delayPitchComputeToJustBeforeNextRenderMs); //try and delay conversion until last moment before next frame!
     console.log("\nearlyMs = " + earlyMs);
 
@@ -288,13 +292,13 @@ function computePitch(timestamp) {
 
 /*// time yin
 let this_samplesBuffer = new Float32Array(10 * 512);
-let MAX_SAMPLE_WL = 256;
+let window.maxSampleWl = 256;
 let iMaxWlStart = 0;
 var startNsTime = performance.now();
 var iIts = 1000;
 let this_pitch;
 for (var i = 0; i < iIts; i++) {
-  this_pitch = yin(this_samplesBuffer, MAX_SAMPLE_WL, iMaxWlStart);
+  this_pitch = yin(this_samplesBuffer, window.maxSampleWl, iMaxWlStart);
   //console.log("\nthis_pitch = " + i);
 }
 var ellapsedItsMs = performance.now() - startNsTime;
