@@ -56,7 +56,7 @@ var theBuffer = null;
 //var detectorElem, canvasElem, canvasContext, waveCanvas, pitchElem, noteElem, detuneElem, detuneAmount;
 
 if (navigator.mediaDevices) {
-  //alert("getUserMedia supported.");
+  alert("getUserMedia supported.");
   navigator.mediaDevices
     .getUserMedia({
       audio: {
