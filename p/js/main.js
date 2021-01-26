@@ -74,6 +74,7 @@ if (navigator.mediaDevices) {
       alert("The following gUM error occured: " + err);
     });
 } else {
+  alert("navigator.getUserMedia = " + navigator.getUserMedia);
   alert("getUserMedia not supported on your browser!!");
 }
 
