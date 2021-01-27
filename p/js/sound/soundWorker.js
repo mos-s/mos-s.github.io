@@ -1,6 +1,6 @@
-"use strict";
+
 //import {  window.maxSampleWl } from "./Sound.js";
-import * as SamplesBufferZ from "./SamplesBuffer.js";
+//import * as SamplesBufferZ from "./SamplesBuffer.js";
 import * as Settings from "../Settings.js";
 //SamplesBufferZ.init(1024 * 3); // causes "uncaught ref to window!"
 /*var i = 0;
