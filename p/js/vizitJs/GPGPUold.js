@@ -20,7 +20,7 @@ if (window.yNoInputTexture && !window.yOES_texture_float) {
   window.yOES_texture_float = true;
 }*/
 //var shaders = require('Shaders');
-import { shaders } from "./shaders.js";
+import { shaders } from "./Shaders.js";
 import * as ShaderProgram from "./ShaderProgram.js";
 import * as Tests from "./Tests.js";
 
