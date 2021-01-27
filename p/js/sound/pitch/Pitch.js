@@ -1,6 +1,4 @@
 import * as gpgpu from "../../gpgpu.js";
-//import * as SamplesBuffer from "../SamplesBuffer.js";
-//import * as Settings from "../../Settings.js";
 
 export const iGpgpuMethod = 0;
 export const iYinMethod = 1;

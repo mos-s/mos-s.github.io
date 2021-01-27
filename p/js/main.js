@@ -28,7 +28,7 @@ LINKS
 //import * as yin from "./yin.js";
 import { yin } from "./sound/pitch/yin.js";
 //import { gpgpu } from "./vizitJs/GPGPU.js";
-import * as gpgpu from "./gpgpu.js";
+//import * as gpgpu from "./gpgpu.js";
 import { SoundObject, computeLatestPitch, getLatestPitch} from "./sound/Sound.js";
 import * as Pitch from "./sound/pitch/PitchDisplay.js";
 import * as Settings from "./Settings.js"; // sets and puts tem under window for this main thread!
@@ -245,11 +245,11 @@ function displayPitch(timestamp) {
     if (earlyMs < (16.66 + 2.0)) {
       delayPitchComputeToJustBeforeNextRenderMs += (earlyMs - 1.0);
     }
-    delayPitchComputeToJustBeforeNextRenderMs = 0; // during dev
-    setTimeout(computeLatestPitch, delayPitchComputeToJustBeforeNextRenderMs); //try and delay conversion until last moment before next frame!
-    console.log("\nearlyMs = " + earlyMs);
-
-    console.log("\ndelayPitchComputeToJustBeforeNextRenderMs = " + delayPitchComputeToJustBeforeNextRenderMs);
+    //delayPitchComputeToJustBeforeNextRenderMs = 0; // during dev
+    //setTimeout(computeLatestPitch, delayPitchComputeToJustBeforeNextRenderMs); //try and delay conversion until last moment before next frame!
+    computeLatestPitch();
+    //console.log("\nearlyMs = " + earlyMs);
+    //console.log("\ndelayPitchComputeToJustBeforeNextRenderMs = " + delayPitchComputeToJustBeforeNextRenderMs);
 
   }
   requestAnimationFrame(displayPitch);
