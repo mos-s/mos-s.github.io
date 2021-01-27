@@ -1,8 +1,8 @@
 "use strict";
 //import {  window.maxSampleWl } from "./Sound.js";
-import * as SamplesBuffer from "./SamplesBuffer.js";
+import * as SamplesBufferZ from "./SamplesBuffer.js";
 import * as Settings from "../Settings.js";
-//SamplesBuffer.init(1024 * 3); // causes "uncaught ref to window!"
+//SamplesBufferZ.init(1024 * 3); // causes "uncaught ref to window!"
 /*var i = 0;
 
 function timedCount() {
@@ -111,30 +111,30 @@ onmessage = function (e) {
 };
 */
 onmessage = function (e) {
-  if (SamplesBuffer.f32SamplesBuffer == null) {
-    SamplesBuffer.init(1024 * 3);
+  if (SamplesBufferZ.f32SamplesBufferZ == null) {
+    SamplesBufferZ.init(1024 * 3);
   }
-  let samplesBuffer = SamplesBuffer.f32SamplesBuffer;
-  let free = samplesBuffer[SamplesBuffer.freeInd];
+  let samplesBuffer = SamplesBufferZ.f32SamplesBufferZ;
+  let free = samplesBuffer[SamplesBufferZ.freeInd];
   samplesBuffer.set(e.data, free); // might this be faster with uint8?
 
   // Copy also to other end of ring buffer if appropriate
-  if (this.free2 >= SamplesBuffer.iSamples && this.free2 < SamplesBuffer.iAugmentedSamples) {
+  if (this.free2 >= SamplesBufferZ.iSamples && this.free2 < SamplesBufferZ.iAugmentedSamples) {
     samplesBuffer.set(e.data, this.free2); // might this be faster with uint8?
     this.free2 += Settings.iSamplesInBlock;
   }
 
   free += Settings.iSamplesInBlock;
-  if (free >= SamplesBuffer.iSamples) {
+  if (free >= SamplesBufferZ.iSamples) {
     this.free2 = free;
     free = 0;
   }
-  samplesBuffer[SamplesBuffer.freeInd] = free;
+  samplesBuffer[SamplesBufferZ.freeInd] = free;
 
   //---------------------------Send pitch samples to main thread on every samples block! ----------------------------
   let iMaxWlStart = free - Settings.maxSampleWl * 2;
   if (iMaxWlStart < 0) {
-    iMaxWlStart += SamplesBuffer.iSamples;//iSamplesInBlock; //this_iSamples;
+    iMaxWlStart += SamplesBufferZ.iSamples;//iSamplesInBlock; //this_iSamples;
   }
   var iWidth = 512 * 2; //window.maxSampleWl * 2;
   //var iByteWidth = 4;//iWidth * 4; // float is 4 bytes
