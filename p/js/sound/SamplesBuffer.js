@@ -1,3 +1,4 @@
+"use strict";
 /*
 DESCRIPTION
   Similar to C++ version -  circular buffer for (f32 currently) samples

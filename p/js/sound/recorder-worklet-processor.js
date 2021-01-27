@@ -1,3 +1,4 @@
+"use strict";
 /*
 A worklet for recording in sync with AudioContext.currentTime.
 

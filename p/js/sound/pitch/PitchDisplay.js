@@ -1,3 +1,5 @@
+"use strict";
+
 import { SamplesBufferz, pitchSamplesBuffer } from "../Sound.js";
 
 var detectorElem, canvasElem, canvasContext, waveCanvas, pitchElem, noteElem, detuneElem, detuneAmount;

@@ -1,3 +1,4 @@
+"use strict";
 /*
   Copyright (C) 2003-2009 Paul Brossier <piem@aubio.org>
   This file is part of aubio.

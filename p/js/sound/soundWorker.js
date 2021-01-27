@@ -1,3 +1,4 @@
+"use strict";
 //import {  window.maxSampleWl } from "./Sound.js";
 import * as SamplesBuffer from "./SamplesBuffer.js";
 import * as Settings from "../Settings.js";

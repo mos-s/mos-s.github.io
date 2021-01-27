@@ -1,3 +1,5 @@
+"use strict";
+
 import * as gpgpu from "../../gpgpu.js";
 
 export const iGpgpuMethod = 0;

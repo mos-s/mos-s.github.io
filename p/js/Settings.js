@@ -1,3 +1,4 @@
+"use strict";
 /*
 DESCRIPTION
     Way of making 'constant' variables available to any thread simply by importing this file with import * as Settings from "??/Settings.js"; 

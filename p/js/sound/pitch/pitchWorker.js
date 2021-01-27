@@ -6,6 +6,7 @@ IMPROVEMENTS
     When shared memory, place pitch there!
     import buffer dims from Sound to deduce buffer size and var locations? (poss?)
 */
+"use strict";
 //import { iSamplesInBlock, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffer, SamplesBuffer } from "../Sound.js";
 //import { iSamplesInBlock} from "../Sound.js";
 import * as SamplesBuffer from "../SamplesBuffer.js";

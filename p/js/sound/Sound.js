@@ -1,3 +1,4 @@
+"use strict";
 //import { yin } from "../pitch/yin.js";
 import { yin } from "./pitch/yin.js";
 import * as gpgpu from "../gpgpu.js";
