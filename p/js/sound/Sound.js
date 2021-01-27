@@ -404,7 +404,7 @@ First attempt can assume audioWorker but no shared memory! then will work also f
 
     if (yOscillatorOn) {
       yOscillatorOn = false;
-      oscillator.stop();
+      ///iosdevoscillator.stop();
     } else {
       let yOscillator = false; //true;
 

@@ -7,7 +7,7 @@ IMPROVEMENTS
     import buffer dims from Sound to deduce buffer size and var locations? (poss?)
 */
 //import { iSamplesInBlock, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffer, SamplesBuffer } from "../Sound.js";
-import { iSamplesInBlock, window.maxSampleWl } from "../Sound.js";
+//import { iSamplesInBlock} from "../Sound.js";
 import * as SamplesBuffer from "../SamplesBuffer.js";
 //import { SamplesBuffer } from "../SamplesBuffer.js";
 //import * as Fred from "../Fred.js";
