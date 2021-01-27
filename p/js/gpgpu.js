@@ -1,3 +1,4 @@
+"use strict";
 /*z
 DESCRIPTION 
   from lesson at - http://www.vizitsolutions.com/portfolio/webgl/gpgpu and the few files it refers to. (html and main.js were missing)
@@ -10,7 +11,7 @@ TODO
 PROBLEMS
   Some older GPUs will say they have OES_texture_float extension but will fail to write to (and read from?) a FLOAT  texture (see http://www.vizitsolutions.com/portfolio/webgl/gpgpu )
 */
-"use strict";
+
 
 /*window.yOES_texture_float = true;
 window.yNoInputTexture = true;
