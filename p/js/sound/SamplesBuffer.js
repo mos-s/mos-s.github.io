@@ -7,8 +7,9 @@ DESCRIPTION
 */
 
 //import { iSamplesInBlock, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffer, SamplesBuffer, window.maxSampleWl } from "sound/Sound.js";
-import { SAMPLE_BLOCKS} from "./Sound.js";
-import * as Settings from "../Settings.js"; // because this is called from other (ie non main) threads!
+//import { SAMPLE_BLOCKS} from "./Sound.js";
+import * as Settings from "../Settings.js";
+ // because this is called from other (ie non main) threads!
 
 export let iVar = 11;
 let sab;
