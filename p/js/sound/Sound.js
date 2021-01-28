@@ -6,11 +6,11 @@ import * as ShaderProgram from "../vizitJs/ShaderProgram.js";
 //import * as SamplesBuffer from "./SamplesBuffer.js";
 //import { SamplesBuffer } from "./SamplesBuffer.js";
 import * as Pitch from "./pitch/Pitch.js"
-
+let pitchMethod;
 //import * as Settings from "./Settings.js"; // must be first or at least before Sound.js!
 //import {ySharedMemory, yAudioWorklet, iSamplesInBlock, maxSampleWl, yWriteToFloatTexture, iPitchMethod} from "./Settings.js"; // must be first or at least before Sound.js!
 import {Settings} from "./Settings.js"; // must be first or at least before Sound.js! ??
-//window.settings = Settings.create();
+window.settings = Settings;
 import * as SamplesBuffer from "./SamplesBuffer.js";
 window.samplesBuffer = SamplesBuffer.create();
 
@@ -167,7 +167,7 @@ export class SoundObject extends Object {
   async setUpSoundProcessor(callback) {
     //mediaStream, pitchMethod_) {
     // ie audioWorklet or scriptProcessor?
-    Pitch.init();
+    pitchMethod = Pitch.init();
   
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -204,11 +204,15 @@ export class SoundObject extends Object {
         soundWorker = new Worker("js/sound/soundWorker.js", { type: "module" });
         //soundWorker = new Worker("js/sound/pitch/pitchWorker.js", { type: "module" });
         soundWorker.onmessage = function (e) {
-          pitchSamplesBuffer = e.data; // this should/could be a transfer!?
-          //soundWorker.stop();
+          if ((Settings.iPitchMethodOverride == Settings.iYinJsWorkerMethod)) {
+            SamplesBuffer.f32SamplesBuffer[SamplesBuffer.pitchInd] = e.data; 
+          } else {
+            pitchSamplesBuffer = e.data; // this should/could be a transfer!?
+          }
         };
         soundWorker.postMessage({cmd: "Settings", val: Settings});
         soundWorker.postMessage({cmd: "SamplesBuffer", val: window.samplesBuffer});
+        //soundWorker.postMessage({cmd: "PitchMethod", val: {"pitchMethod": pitchMethod}});
 
       }
       this.setUpScriptProcessor(); //mediaStream, pitchMethod_);

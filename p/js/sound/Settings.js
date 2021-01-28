@@ -7,7 +7,7 @@ DESCRIPTION
 IMPROVEMENTS
     
 */
-import { iGpgpuMethod, iYinMethod } from "./pitch/Pitch.js";
+import {iYinJsMethod, iGpgpuMethod, iYinJsWorkerMethod} from "./pitch/Pitch.js";
 
 export let Settings;
 
@@ -21,7 +21,7 @@ const ySharedMemoryOverride = false;
 const iScriptProcessorSamplesInBlockOverride = 1024;// 1024  seems to almost completely eliminate dropped sample blocks on lenovo.
 //const maxWlOverride = 256;
 //const yWriteToFloatTextureOverride = false;
-const iPitchMethodOverride = iYinMethod;
+const iPitchMethodOverride = iYinJsWorkerMethod;//iYinJsMethod;
 
 // default values
 const iScriptProcessorDefaultSamplesInBlock = 512;

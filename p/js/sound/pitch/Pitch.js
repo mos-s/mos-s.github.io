@@ -2,26 +2,33 @@
 
 import * as gpgpu from "../../gpgpu.js";
 
-export const iGpgpuMethod = 0;
-export const iYinMethod = 1;
-export const iYBitstreamMethod = 2;
+export const iYinJsMethod = 1;
+export const iYinJsWorkerMethod = 2;
+export const iGpgpuMethod = 3;
+export const iYBitstreamMethod = 4;
 
 export let computeMethod = computeWithGpgpu;
 export let dotProduct, iDotProductLength;
 
-const yDoTiming = false;//true;
+const yDoTiming = false; //true;
+
 export function init() {
   dotProduct = new Float32Array(window.maxSampleWl);
   iDotProductLength = dotProduct.length;
   let method;
 
   switch (window.iPitchMethod) {
+    case iYinJsMethod:
+      method = yin;
+      break;
+    case iYinJsWorkerMethod:
+      method = function () {
+        return window.samplesBuffer.Float32Array[window.samplesBuffer.Float32Array.pitchInd]
+      };
+      break;
     case iGpgpuMethod:
       gpgpu.exec();
       method = computeWithGpgpu;
-      break;
-    case iYinMethod:
-      method = yin;
       break;
     case iGpgpuMethod:
       break;
@@ -39,10 +46,11 @@ export function init() {
     window.computedAndSavedPitchMsTime = endNsTime; // needed for scheduling!
     var ellapsedItsMs = endNsTime - startNsTime;
     //if (pitch < 3000) {
-      console.log("\nellapsedItsMs = " + ellapsedItsMs);
+    console.log("\nellapsedItsMs = " + ellapsedItsMs);
     //}
     return pitch;
   };
+  return computeMethod;//
 }
 
 // ================================ gpgpu (ie shader!) =================================

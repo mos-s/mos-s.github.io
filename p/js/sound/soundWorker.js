@@ -1,7 +1,10 @@
 //import {  window.maxSampleWl } from "./Sound.js";
+
+//const { pitchSamplesBuffer } = require("./Sound");
+//const {computeMethod} = require("./pitch/Pitch.js");
 //import * as SamplesBuffer from "./SamplesBufferOld.js";
-let Settings; // initialised by postMessage from Sound.js
-let SamplesBuffer;
+let Settings, SamplesBuffer, pitchComputeMethod; // initialised by postMessage from Sound.js
+pitchComputeMethod = yin;// for now
 //import * as Settings from "../SettingsOld.js";
 //SamplesBuffer.init(1024 * 3); // causes "uncaught ref to window!"
 /*var i = 0;
@@ -111,16 +114,21 @@ onmessage = function (e) {
   }
 };
 */
+let dotProduct, iDotProductLength;
 onmessage = function (e) {
   switch (e.data.cmd) {
     case "SamplesBuffer":
-      SamplesBuffer = e.data.val;//.init(e.data.val);
+      SamplesBuffer = e.data.val; //.init(e.data.val);
+      break;
+    case "PitchMethod":
+      pitchComputeMethod = e.data.val;
       break;
     case "Settings":
       Settings = e.data.val;
+      dotProduct = new Float32Array(Settings.maxSampleWl);
+      iDotProductLength = dotProduct.length;
       break;
     case "Samples":
-
       /*if (SamplesBuffer.f32SamplesBuffer == null) {
 
     SamplesBuffer.init(1024 * 3);
@@ -154,13 +162,142 @@ onmessage = function (e) {
       //var fInputTexBuffer = new Float32Array(slice, iMaxWlStart * 4, iWidth); // can use dataview!? also - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array/Float32Array
       //QUESTION: Better if main asked for samples? (would save wasted posts)
 
-      var slice = new Float32Array(samplesBuffer.buffer, iMaxWlStart * 4, iWidth); // Would like to transfer this! I think it is fast because basically just sends pointer!!??
+      var pitchBufferSamples = new Float32Array(samplesBuffer.buffer, iMaxWlStart * 4, iWidth); // Would like to transfer this! I think it is fast because basically just sends pointer!!??
       /*if (slice[1] != 0) {
     let fred = 0;
   }*/
-      postMessage(slice); // ie we send (to main.onMessage) just enough of  most recent samples for pitch deduction! Avoids shared memory!!?
+      if (Settings.iPitchMethodOverride == Settings.iYinJsWorkerMethod) {
+        let pitch = pitchComputeMethod(pitchBufferSamples);
+        //samplesBuffer[SamplesBuffer.pitchInd] = pitch;
+        postMessage(pitch);
+      } else {
+        // Send samples to main thread for computation
+        postMessage(pitchBufferSamples); // ie we send (to main.onMessage) just enough of  most recent samples for pitch deduction! Avoids shared memory!!?
+      }
       break;
     default:
       alert("invalid cmd in soundWorker!");
   }
 };
+
+function yin(pitchSamplesBuffer) {
+  yinDotProduct(pitchSamplesBuffer);
+  return yinComputeFromDotProduct();
+}
+
+function yinDotProduct(pitchSamplesBuffer) {
+  //}, max_sample_wl_param, iStartIndex) {
+  // Set buffer size to the highest power of two below the provided buffer's length.
+  /*let bufferSize;
+    for (bufferSize = 1; bufferSize < float32AudioBuffer.length; bufferSize *= 2);
+    bufferSize /= 2;
+  */
+  // Set up the yinBuffer as described in step one of the YIN paper.
+  //const yinBufferLength = window.maxSampleWl; //max_sample_wl_param;//bufferSize / 2;
+  //const dotProduct = new Float32Array(yinBufferLength);
+
+  // Compute the difference function as described in step 2 of the YIN paper.
+  for (let t = 0; t < iDotProductLength; t++) {
+    dotProduct[t] = 0;
+  }
+  for (let t = 1; t < iDotProductLength; t++) {
+    //  for (let i = iStartIndex; i < iStartIndex + yinBufferLength; i++) {
+    for (let i = 0; i < iDotProductLength; i++) {
+      const delta = pitchSamplesBuffer[i] - pitchSamplesBuffer[i + t];
+      dotProduct[t] += delta * delta;
+    }
+  }
+}
+
+function yinComputeFromDotProduct() {
+  // Compute the cumulative mean normalized difference as described in step 3 of the paper.
+  dotProduct[0] = 1;
+  dotProduct[1] = 1;
+  let runningSum = 0;
+  for (let t = 1; t < iDotProductLength; t++) {
+    runningSum += dotProduct[t];
+    dotProduct[t] *= t / runningSum; //yinBuffer[t] = yinBuffer[t] * (t / runningSum);
+  }
+
+  const threshold = 0.07;
+  const sampleRate = 48000;
+  const probabilityThreshold = 0.1;
+
+  let probability = 0,
+    tau;
+
+  // Compute the absolute threshold as described in step 4 of the paper.
+  // Since the first two positions in the array are 1,
+  // we can start at the third position.
+  for (tau = 2; tau < iDotProductLength; tau++) {
+    if (dotProduct[tau] < threshold) {
+      while (tau + 1 < iDotProductLength && dotProduct[tau + 1] < dotProduct[tau]) {
+        tau++;
+      }
+      // found tau, exit loop and return
+      // store the probability
+      // From the YIN paper: The threshold determines the list of
+      // candidates admitted to the set, and can be interpreted as the
+      // proportion of aperiodic power tolerated
+      // within a periodic signal.
+      //
+      // Since we want the periodicity and and not aperiodicity:
+      // periodicity = 1 - aperiodicity
+      probability = 1 - dotProduct[tau];
+      break;
+    }
+  }
+
+  // if no pitch found, return null.
+  if (tau === iDotProductLength || dotProduct[tau] >= threshold) {
+    // if tau === iDotProductLength prevents evaluation of dotProduct[tau] which would be one past last elt of dotProduct!
+    return null;
+  }
+
+  // If probability too low, return -1.
+  if (probability < probabilityThreshold) {
+    return null;
+  }
+
+  /**
+   * Implements step 5 of the AUBIO_YIN paper. It refines the estimated tau
+   * value using parabolic interpolation. This is needed to detect higher
+   * frequencies more precisely. See http://fizyka.umk.pl/nrbook/c10-2.pdf and
+   * for more background
+   * http://fedc.wiwi.hu-berlin.de/xplore/tutorials/xegbohtmlnode62.html
+   */
+  let betterTau, x0, x2;
+  if (tau < 1) {
+    x0 = tau;
+  } else {
+    x0 = tau - 1;
+  }
+  if (tau + 1 < iDotProductLength) {
+    x2 = tau + 1;
+  } else {
+    x2 = tau;
+  }
+  if (x0 === tau) {
+    if (dotProduct[tau] <= dotProduct[x2]) {
+      betterTau = tau;
+    } else {
+      betterTau = x2;
+    }
+  } else if (x2 === tau) {
+    if (dotProduct[tau] <= dotProduct[x0]) {
+      betterTau = tau;
+    } else {
+      betterTau = x0;
+    }
+  } else {
+    const s0 = dotProduct[x0];
+    const s1 = dotProduct[tau];
+    const s2 = dotProduct[x2];
+    // fixed AUBIO implementation, thanks to Karl Helgason:
+    // (2.0f * s1 - s2 - s0) was incorrectly multiplied with -1
+    betterTau = tau + (s2 - s0) / (2 * (2 * s1 - s2 - s0));
+  }
+
+  return sampleRate / betterTau;
+}
+
