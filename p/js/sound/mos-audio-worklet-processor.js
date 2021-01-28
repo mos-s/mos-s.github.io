@@ -19,9 +19,11 @@ import Module from "./simple-kernel.wasmmodule.js";
 import { RENDER_QUANTUM_FRAMES, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffer, SamplesBufferWasm } from "./wasm-audio-helper.js";
 //import { iSamplesInBlock, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffer, SamplesBuffer } from "./sound/Sound.js";
 import { yin } from "./pitch/yin.js";
-import * as SamplesBuffer from "./SamplesBuffer.js";
+//import * as SamplesBuffer from "./SamplesBuffer.js";
 //import { iSamplesInBlock, window.maxSampleWl } from "./Sound.js";
-import * as Settings from "../Settings.js";
+//import * as Settings from "../Settings.js";
+let Settings;
+let SamplesBuffer;
 
 const yDoTiming = false;
 //const window.maxSampleWl = 512; //600 - should b f(samplerate)
@@ -46,14 +48,19 @@ class MosAudioWorkletProcessor extends AudioWorkletProcessor {
    */
   constructor() {
     super();
-    this.port.onmessage = (event) => {
-      // Handling data from the node.
-      //console.log(event.data);
-      //SAB = event.data.sab;
-      // case "sab":
-      SamplesBuffer.init(event.data.value);
-
-      this.free2 = 0;
+    this.port.onmessage = (e) => {
+      switch (e.data.cmd) {
+        case "SamplesBuffer":
+          SamplesBuffer = e.data.val;//init(e.data.val);
+          this.free2 = 0; //??
+          break;
+        case "Settings":
+          Settings = e.data.val;
+          break;
+        default:
+          alert("Illegal cmd in mos-audio-worklet-processor");
+        //SamplesBuffer.init(event.data.value);
+      }
     };
 
     // Allocate the buffer for the heap access. Start with stereo, but it can
@@ -165,7 +172,7 @@ class MosAudioWorkletProcessor extends AudioWorkletProcessor {
               this.free2 += Settings.iSamplesInBlock;
             }
 
-            free += Settings.iSamplesInBlock; 
+            free += Settings.iSamplesInBlock;
             if (free >= SamplesBuffer.iSamples) {
               this.free2 = free;
               free = 0;

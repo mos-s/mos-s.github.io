@@ -9,7 +9,8 @@ IMPROVEMENTS
 "use strict";
 //import { iSamplesInBlock, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffer, SamplesBuffer } from "../Sound.js";
 //import { iSamplesInBlock} from "../Sound.js";
-import * as SamplesBuffer from "../SamplesBuffer.js";
+//import * as SamplesBuffer from "../SamplesBuffer.js";
+let SamplesBuffer; // untested!
 //import { SamplesBuffer } from "../SamplesBuffer.js";
 //import * as Fred from "../Fred.js";
 //importScripts("../Fred.js")

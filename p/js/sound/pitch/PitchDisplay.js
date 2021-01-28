@@ -1,6 +1,6 @@
 "use strict";
 
-import { SamplesBufferz, pitchSamplesBuffer } from "../Sound.js";
+import { pitchSamplesBuffer } from "../Sound.js";
 
 var detectorElem, canvasElem, canvasContext, waveCanvas, pitchElem, noteElem, detuneElem, detuneAmount;
 var DEBUGCANVAS;
@@ -56,8 +56,8 @@ export function displayWave() {
   var samplesBuffer, freeInd;
   // We assume here that window.maxSampleWl * 2 is at least width of wave display
   if (window.ySharedMemory) {
-    samplesBuffer = SamplesBufferz.f32SamplesBuffer;
-    freeInd = samplesBuffer[SamplesBufferz.freeInd];
+    samplesBuffer = window.samplesBuffer.f32SamplesBuffer;
+    freeInd = samplesBuffer[window.samplesBuffer.freeInd];
   } else {
     if (pitchSamplesBuffer == null) {
       return;

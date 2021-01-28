@@ -2,14 +2,21 @@
 /*
 DESCRIPTION
   Similar to C++ version -  circular buffer for (f32 currently) samples
+  Handles whether ySharedMemory is available or not! 
 
+NOTES
+  No longer imported in workers. We now post (a copy of) the object instead.
 
 */
+//import * as Settings from "./Settings.js"; // must be first or at least before Sound.js!
+//import {ySharedMemory, yAudioWorklet, iSamplesInBlock, maxSampleWl, yWriteToFloatTexture, iPitchMethod} from "./Settings.js"; // must be first or at least before Sound.js!
+import {values as Settings} from "./Settings.js";
 
 //import { iSamplesInBlock, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffer, SamplesBuffer, window.maxSampleWl } from "sound/Sound.js";
 //import { SAMPLE_BLOCKS} from "./Sound.js";
-import * as Settings from "../Settings.js";
- // because this is called from other (ie non main) threads!
+///import * as Settings from "../SettingsOld.js";
+//let Settings;
+// because this is called from other (ie non main) threads!
 
 export let iVar = 11;
 let sab;
@@ -60,6 +67,19 @@ export function init(iSamplesOrSharedArrayBuffer) {
   pitchInd = toProcessInd + 1;
 }
 
+export function create() {
+  init(3 * 1024); 
+  let o = {};
+  o.f32SamplesBuffer = f32SamplesBuffer;
+  o.freeInd = freeInd;
+  o.toProcessInd = toProcessInd;
+  o.pitchInd = pitchInd;
+  o.iSamples = iSamples;
+  o.iAugmentedSamples = iAugmentedSamples;
+  o.iWrapAvoidSamples = iWrapAvoidSamples;
+  return o;
+}
+
 export function writeSamplesBlock() {
   /*this.samplesBuffer = SAB.samplesBuffer;
     //this.samplesBuffer.subarray(this.free, (this.free + 128)).set(inputs[0][0]);
@@ -82,8 +102,6 @@ export function writeSamplesBlock() {
     break;
     */
 }
-
-
 
 export function readLatestSamplesBlock() {
   letfred = 0;

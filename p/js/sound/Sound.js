@@ -6,8 +6,15 @@ import * as ShaderProgram from "../vizitJs/ShaderProgram.js";
 //import * as SamplesBuffer from "./SamplesBuffer.js";
 //import { SamplesBuffer } from "./SamplesBuffer.js";
 import * as Pitch from "./pitch/Pitch.js"
+
+//import * as Settings from "./Settings.js"; // must be first or at least before Sound.js!
+//import {ySharedMemory, yAudioWorklet, iSamplesInBlock, maxSampleWl, yWriteToFloatTexture, iPitchMethod} from "./Settings.js"; // must be first or at least before Sound.js!
+import {values as Settings} from "./Settings.js"; // must be first or at least before Sound.js! ??
+//window.settings = Settings.create();
 import * as SamplesBuffer from "./SamplesBuffer.js";
-export let SamplesBufferz = SamplesBuffer;
+window.samplesBuffer = SamplesBuffer.create();
+
+//export let SamplesBufferz = SamplesBuffer;
 
 const yDoTiming = true;
 let yInsideRtn = false;
@@ -181,7 +188,10 @@ export class SoundObject extends Object {
           console.log("pitch = " + thiz.pitch); // + "\n");
         };*/
 
-        soundProcessorNode.port.postMessage({ command: "sab", value: window.sab });
+        //soundProcessorNode.port.postMessage({ command: "sab", value: window.sab });
+        soundProcessorNode.postMessage({cmd: "Settings", val: {values: Settings}});
+        soundProcessorNode.postMessage({cmd: "SamplesBuffer", val: window.samplesBuffer});
+
       } catch (e) {
         alert("Problem inside js/sound/mos-audio-worklet-processor.js !");
       }
@@ -197,6 +207,9 @@ export class SoundObject extends Object {
           pitchSamplesBuffer = e.data; // this should be a transfer!
           //soundWorker.stop();
         };
+        soundWorker.postMessage({cmd: "Settings", val: {values: Settings}});
+        soundWorker.postMessage({cmd: "SamplesBuffer", val: window.samplesBuffer});
+
       }
       this.setUpScriptProcessor(); //mediaStream, pitchMethod_);
 
@@ -284,8 +297,11 @@ First attempt can assume audioWorker but no shared memory! then will work also f
     if (yUseWorker) {
       soundProcessorNode.onaudioprocess = function (e) {
         if (soundWorker != null) {
-          let i = e.inputBuffer.getChannelData(0)
-          soundWorker.postMessage(i); // For now for simplicity we post to worker even if sound received by audioWorker rather than script processor
+          //let i = e.inputBuffer.getChannelData(0)
+          //soundWorker.postMessage(i); // For now for simplicity we post to worker even if sound received by audioWorker rather than script processor
+          soundWorker.postMessage({cmd: "Samples", val: e.inputBuffer.getChannelData(0)});
+          
+          
           // if (e.inputBuffer.duration != 0.010666666666666666) {
           //   let fred = 0;
           // }

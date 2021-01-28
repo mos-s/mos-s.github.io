@@ -1,8 +1,9 @@
-
 //import {  window.maxSampleWl } from "./Sound.js";
-//import * as SamplesBufferZ from "./SamplesBuffer.js";
-import * as Settings from "../Settings.js";
-//SamplesBufferZ.init(1024 * 3); // causes "uncaught ref to window!"
+//import * as SamplesBuffer from "./SamplesBufferOld.js";
+let Settings; // initialised by postMessage from Sound.js
+let SamplesBuffer;
+//import * as Settings from "../SettingsOld.js";
+//SamplesBuffer.init(1024 * 3); // causes "uncaught ref to window!"
 /*var i = 0;
 
 function timedCount() {
@@ -111,40 +112,55 @@ onmessage = function (e) {
 };
 */
 onmessage = function (e) {
-  if (SamplesBufferZ.f32SamplesBufferZ == null) {
-    SamplesBufferZ.init(1024 * 3);
-  }
-  let samplesBuffer = SamplesBufferZ.f32SamplesBufferZ;
-  let free = samplesBuffer[SamplesBufferZ.freeInd];
-  samplesBuffer.set(e.data, free); // might this be faster with uint8?
+  switch (e.data.cmd) {
+    case "SamplesBuffer":
+      SamplesBuffer = e.data.val;//.init(e.data.val);
+      break;
+    case "Settings":
+      Settings = e.data.val;
+      break;
+    case "Samples":
 
-  // Copy also to other end of ring buffer if appropriate
-  if (this.free2 >= SamplesBufferZ.iSamples && this.free2 < SamplesBufferZ.iAugmentedSamples) {
-    samplesBuffer.set(e.data, this.free2); // might this be faster with uint8?
-    this.free2 += Settings.iSamplesInBlock;
-  }
+      /*if (SamplesBuffer.f32SamplesBuffer == null) {
 
-  free += Settings.iSamplesInBlock;
-  if (free >= SamplesBufferZ.iSamples) {
-    this.free2 = free;
-    free = 0;
-  }
-  samplesBuffer[SamplesBufferZ.freeInd] = free;
+    SamplesBuffer.init(1024 * 3);
+  }*/
+      let newSamples = e.data.val;
+      let samplesBuffer = SamplesBuffer.f32SamplesBuffer;
+      let free = samplesBuffer[SamplesBuffer.freeInd];
+      samplesBuffer.set(newSamples, free); // might this be faster with uint8?
 
-  //---------------------------Send pitch samples to main thread on every samples block! ----------------------------
-  let iMaxWlStart = free - Settings.maxSampleWl * 2;
-  if (iMaxWlStart < 0) {
-    iMaxWlStart += SamplesBufferZ.iSamples;//iSamplesInBlock; //this_iSamples;
-  }
-  var iWidth = 512 * 2; //window.maxSampleWl * 2;
-  //var iByteWidth = 4;//iWidth * 4; // float is 4 bytes
-  //works - var slice = this_samplesBuffer.slice(iMaxWlStart, iMaxWlStart + iWidth) ;
-  //var fInputTexBuffer = new Float32Array(slice, iMaxWlStart * 4, iWidth); // can use dataview!? also - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array/Float32Array
-  //QUESTION: Better if main asked for samples? (would save wasted posts)
+      // Copy also to other end of ring buffer if appropriate
+      if (this.free2 >= SamplesBuffer.iSamples && this.free2 < SamplesBuffer.iAugmentedSamples) {
+        samplesBuffer.set(newSamples, this.free2); // might this be faster with uint8?
+        this.free2 += Settings.iSamplesInBlock;
+      }
 
-  var slice = new Float32Array(samplesBuffer.buffer, iMaxWlStart * 4, iWidth); // Would like to transfer this! I think it is fast because basically just sends pointer!!??
-  /*if (slice[1] != 0) {
+      free += Settings.iSamplesInBlock;
+      if (free >= SamplesBuffer.iSamples) {
+        this.free2 = free;
+        free = 0;
+      }
+      samplesBuffer[SamplesBuffer.freeInd] = free;
+
+      //---------------------------Send pitch samples to main thread on every samples block! ----------------------------
+      let iMaxWlStart = free - Settings.maxSampleWl * 2;
+      if (iMaxWlStart < 0) {
+        iMaxWlStart += SamplesBuffer.iSamples; //iSamplesInBlock; //this_iSamples;
+      }
+      var iWidth = 512 * 2; //window.maxSampleWl * 2;
+      //var iByteWidth = 4;//iWidth * 4; // float is 4 bytes
+      //works - var slice = this_samplesBuffer.slice(iMaxWlStart, iMaxWlStart + iWidth) ;
+      //var fInputTexBuffer = new Float32Array(slice, iMaxWlStart * 4, iWidth); // can use dataview!? also - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array/Float32Array
+      //QUESTION: Better if main asked for samples? (would save wasted posts)
+
+      var slice = new Float32Array(samplesBuffer.buffer, iMaxWlStart * 4, iWidth); // Would like to transfer this! I think it is fast because basically just sends pointer!!??
+      /*if (slice[1] != 0) {
     let fred = 0;
   }*/
-  postMessage(slice); // ie we send (to main.onMessage) just enough of  most recent samples for pitch deduction! Avoids shared memory!!?
+      postMessage(slice); // ie we send (to main.onMessage) just enough of  most recent samples for pitch deduction! Avoids shared memory!!?
+      break;
+    default:
+      alert("invalid cmd in soundWorker!");
+  }
 };
