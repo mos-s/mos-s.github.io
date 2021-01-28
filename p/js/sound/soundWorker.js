@@ -162,17 +162,17 @@ onmessage = function (e) {
       //var fInputTexBuffer = new Float32Array(slice, iMaxWlStart * 4, iWidth); // can use dataview!? also - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array/Float32Array
       //QUESTION: Better if main asked for samples? (would save wasted posts)
 
-      var pitchBufferSamples = new Float32Array(samplesBuffer.buffer, iMaxWlStart * 4, iWidth); // Would like to transfer this! I think it is fast because basically just sends pointer!!??
+      var pitchSamplesBuffer = new Float32Array(samplesBuffer.buffer, iMaxWlStart * 4, iWidth); // Would like to transfer this! I think it is fast because basically just sends pointer!!??
       /*if (slice[1] != 0) {
     let fred = 0;
   }*/
       if (Settings.iPitchMethodOverride == Settings.iYinJsWorkerMethod) {
-        let pitch = pitchComputeMethod(pitchBufferSamples);
+        let pitch = pitchComputeMethod(pitchSamplesBuffer);
         //samplesBuffer[SamplesBuffer.pitchInd] = pitch;
         postMessage(pitch);
       } else {
         // Send samples to main thread for computation
-        postMessage(pitchBufferSamples); // ie we send (to main.onMessage) just enough of  most recent samples for pitch deduction! Avoids shared memory!!?
+        postMessage(pitchSamplesBuffer); // ie we send (to main.onMessage) just enough of  most recent samples for pitch deduction! Avoids shared memory!!?
       }
       break;
     default:
