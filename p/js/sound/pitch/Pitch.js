@@ -36,7 +36,9 @@ export function init() {
       pitch = method(pitchSamplesBuffer);
     }
     var ellapsedItsMs = performance.now() - startNsTime;
-    console.log("\nellapsedItsMs = " + ellapsedItsMs);
+    if (pitch < 3000) {
+      alert("\nellapsedItsMs = " + ellapsedItsMs);
+    }
     return pitch;
   };
 }
