@@ -1,15 +1,15 @@
 "use strict";
 /*
 DESCRIPTION
-  Typical use in a file : import {values as Settings} from "./Settings.js"; 
-  For use in worker eg: worker.postMessage({cmd: "Settings", val: {values: Settings}});
+  Typical use in a file : import {Settings} from "./Settings.js"; 
+  For use in worker eg: worker.postMessage({cmd: "Settings", val: Settings});
 
 IMPROVEMENTS
     
 */
 import { iGpgpuMethod, iYinMethod } from "./pitch/Pitch.js";
 
-export let values;
+export let Settings;
 
 // pitch methods
 //export const iGpgpuMethod = 0;
@@ -68,7 +68,7 @@ function initVars() {
 
   iPitchMethod = typeof iPitchMethodOverride !== "undefined" ? iPitchMethodOverride : iPitchMethodDefault;
 
-  values = { ySharedMemory, yAudioWorklet, iSamplesInBlock, maxSampleWl, yWriteToFloatTexture, iPitchMethod };
+  Settings = { ySharedMemory, yAudioWorklet, iSamplesInBlock, maxSampleWl, yWriteToFloatTexture, iPitchMethod };
   var fred = 0;
 }
 

@@ -148,7 +148,7 @@ onmessage = function (e) {
       if (iMaxWlStart < 0) {
         iMaxWlStart += SamplesBuffer.iSamples; //iSamplesInBlock; //this_iSamples;
       }
-      var iWidth = 512 * 2; //window.maxSampleWl * 2;
+      var iWidth = Settings.maxSampleWl * 2; //window.maxSampleWl * 2;
       //var iByteWidth = 4;//iWidth * 4; // float is 4 bytes
       //works - var slice = this_samplesBuffer.slice(iMaxWlStart, iMaxWlStart + iWidth) ;
       //var fInputTexBuffer = new Float32Array(slice, iMaxWlStart * 4, iWidth); // can use dataview!? also - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array/Float32Array

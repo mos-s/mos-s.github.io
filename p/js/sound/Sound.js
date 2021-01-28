@@ -9,7 +9,7 @@ import * as Pitch from "./pitch/Pitch.js"
 
 //import * as Settings from "./Settings.js"; // must be first or at least before Sound.js!
 //import {ySharedMemory, yAudioWorklet, iSamplesInBlock, maxSampleWl, yWriteToFloatTexture, iPitchMethod} from "./Settings.js"; // must be first or at least before Sound.js!
-import {values as Settings} from "./Settings.js"; // must be first or at least before Sound.js! ??
+import {Settings} from "./Settings.js"; // must be first or at least before Sound.js! ??
 //window.settings = Settings.create();
 import * as SamplesBuffer from "./SamplesBuffer.js";
 window.samplesBuffer = SamplesBuffer.create();
@@ -189,7 +189,7 @@ export class SoundObject extends Object {
         };*/
 
         //soundProcessorNode.port.postMessage({ command: "sab", value: window.sab });
-        soundProcessorNode.postMessage({cmd: "Settings", val: {values: Settings}});
+        soundProcessorNode.postMessage({cmd: "Settings", val: Settings});
         soundProcessorNode.postMessage({cmd: "SamplesBuffer", val: window.samplesBuffer});
 
       } catch (e) {
@@ -207,7 +207,7 @@ export class SoundObject extends Object {
           pitchSamplesBuffer = e.data; // this should be a transfer!
           //soundWorker.stop();
         };
-        soundWorker.postMessage({cmd: "Settings", val: {values: Settings}});
+        soundWorker.postMessage({cmd: "Settings", val: Settings});
         soundWorker.postMessage({cmd: "SamplesBuffer", val: window.samplesBuffer});
 
       }

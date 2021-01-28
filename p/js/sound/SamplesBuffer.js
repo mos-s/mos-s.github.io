@@ -10,7 +10,7 @@ NOTES
 */
 //import * as Settings from "./Settings.js"; // must be first or at least before Sound.js!
 //import {ySharedMemory, yAudioWorklet, iSamplesInBlock, maxSampleWl, yWriteToFloatTexture, iPitchMethod} from "./Settings.js"; // must be first or at least before Sound.js!
-import {values as Settings} from "./Settings.js";
+import {Settings} from "./Settings.js";
 
 //import { iSamplesInBlock, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffer, SamplesBuffer, window.maxSampleWl } from "sound/Sound.js";
 //import { SAMPLE_BLOCKS} from "./Sound.js";
