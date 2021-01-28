@@ -9,7 +9,7 @@ export const iYBitstreamMethod = 2;
 export let computeMethod = computeWithGpgpu;
 export let dotProduct, iDotProductLength;
 
-const yDoTiming = false;
+const yDoTiming = true;//true;
 export function init() {
   dotProduct = new Float32Array(window.maxSampleWl);
   iDotProductLength = dotProduct.length;
