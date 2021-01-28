@@ -9,23 +9,38 @@ export const iYBitstreamMethod = 2;
 export let computeMethod = computeWithGpgpu;
 export let dotProduct, iDotProductLength;
 
+const yDoTiming = false;
 export function init() {
-    dotProduct = new Float32Array(window.maxSampleWl);
-    iDotProductLength = dotProduct.length;
+  dotProduct = new Float32Array(window.maxSampleWl);
+  iDotProductLength = dotProduct.length;
+  let method;
 
   switch (window.iPitchMethod) {
     case iGpgpuMethod:
       gpgpu.exec();
-      computeMethod = computeWithGpgpu;
+      method = computeWithGpgpu;
       break;
     case iYinMethod:
-      computeMethod = yin;
+      method = yin;
       break;
     case iGpgpuMethod:
       break;
     default:
   }
+
+  computeMethod = function (pitchSamplesBuffer) {
+    var startNsTime = performance.now();
+    let pitch;
+    var iIts = yDoTiming ? 1000 : 1;
+    for (var i = 0; i < iIts; i++) {
+      pitch = method(pitchSamplesBuffer);
+    }
+    var ellapsedItsMs = performance.now() - startNsTime;
+    console.log("\nellapsedItsMs = " + ellapsedItsMs);
+    return pitch;
+  };
 }
+
 // ================================ gpgpu (ie shader!) =================================
 
 function computeWithGpgpu(pitchSamplesBuffer) {
@@ -56,7 +71,7 @@ function yinDotProduct(pitchSamplesBuffer) {
   //const yinBufferLength = window.maxSampleWl; //max_sample_wl_param;//bufferSize / 2;
   //const dotProduct = new Float32Array(yinBufferLength);
 
-   // Compute the difference function as described in step 2 of the YIN paper.
+  // Compute the difference function as described in step 2 of the YIN paper.
   for (let t = 0; t < iDotProductLength; t++) {
     dotProduct[t] = 0;
   }
@@ -109,7 +124,8 @@ function yinComputeFromDotProduct() {
   }
 
   // if no pitch found, return null.
-  if (tau === iDotProductLength || dotProduct[tau] >= threshold) { // if tau === iDotProductLength prevents evaluation of dotProduct[tau] which would be one past last elt of dotProduct!
+  if (tau === iDotProductLength || dotProduct[tau] >= threshold) {
+    // if tau === iDotProductLength prevents evaluation of dotProduct[tau] which would be one past last elt of dotProduct!
     return null;
   }
 
