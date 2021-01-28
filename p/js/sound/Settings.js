@@ -1,5 +1,6 @@
 "use strict";
 /*
+zzz
 DESCRIPTION
   Typical use in a file : import {values as Settings} from "./Settings.js"; 
   For use in worker eg: worker.postMessage({cmd: "Settings", val: {values: Settings}});
