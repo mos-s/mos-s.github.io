@@ -204,7 +204,7 @@ export class SoundObject extends Object {
         soundWorker = new Worker("js/sound/soundWorker.js", { type: "module" });
         //soundWorker = new Worker("js/sound/pitch/pitchWorker.js", { type: "module" });
         soundWorker.onmessage = function (e) {
-          pitchSamplesBuffer = e.data; // this should be a transfer!
+          pitchSamplesBuffer = e.data; // this should/could be a transfer!?
           //soundWorker.stop();
         };
         soundWorker.postMessage({cmd: "Settings", val: Settings});
@@ -484,13 +484,6 @@ export function computeLatestPitch() {
   if (pitchSamplesBuffer != null) {
     let pitch = Pitch.computeMethod(pitchSamplesBuffer);
     SamplesBuffer.f32SamplesBuffer[SamplesBuffer.pitchInd] = pitch; // maybe should be in caller?
-    var nowNsTime = performance.now();
-    window.computedAndSavedPitchMsTime = nowNsTime;
-
-    var ellapsedItsMs = nowNsTime - prevNsTime;
-    prevNsTime = nowNsTime;
-    console.log("\npitch = " + pitch);
-    console.log("\nellapsedItsMs = " + ellapsedItsMs);
   }
 
   if (pitchWorker) {

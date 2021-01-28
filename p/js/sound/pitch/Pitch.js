@@ -35,10 +35,12 @@ export function init() {
     for (var i = 0; i < iIts; i++) {
       pitch = method(pitchSamplesBuffer);
     }
-    var ellapsedItsMs = performance.now() - startNsTime;
-    if (pitch < 3000) {
-      alert("\nellapsedItsMs = " + ellapsedItsMs);
-    }
+    var endNsTime = performance.now();
+    window.computedAndSavedPitchMsTime = endNsTime; // needed for scheduling!
+    var ellapsedItsMs = endNsTime - startNsTime;
+    //if (pitch < 3000) {
+      console.log("\nellapsedItsMs = " + ellapsedItsMs);
+    //}
     return pitch;
   };
 }
