@@ -197,6 +197,7 @@ export class SoundObject extends Object {
       }
     } else {
       // no audio worker
+      console.log("window.iSamplesInBlock = " + window.iSamplesInBlock);
       soundProcessorNode = audioContext.createScriptProcessor(window.iSamplesInBlock, 2, 2);
       // let soundProcessorNode2 = audioContext.createScriptProcessor(4 * 1024, 2, 2);
       if (window.ySharedMemory) {
