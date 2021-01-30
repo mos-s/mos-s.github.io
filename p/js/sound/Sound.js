@@ -176,7 +176,8 @@ export class SoundObject extends Object {
 
     //Set up soundWorker and pitchWorker from main thread. Also set up message channel BETWEEN them! Also beween audioWorker and soundWorker (possible?)
     //Audio from mic into ring buffer:
-    console.log("window.yAudioWorklet = " + (typeof AudioWorkletNode !== "undefined")? "true" : "false");
+    let msg = (typeof AudioWorkletNode !== "undefined")? "true" : "false";
+    console.log("AudioWorkletNode defined = " + msg);
     if (window.yAudioWorklet) {
       try {
         await audioContext.audioWorklet.addModule("js/sound/mos-audio-worklet-processor.js");
