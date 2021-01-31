@@ -5,11 +5,11 @@ import * as gpgpu from "../gpgpu.js";
 import * as ShaderProgram from "../vizitJs/ShaderProgram.js";
 //import * as SamplesBuffer from "./SamplesBuffer.js";
 //import { SamplesBuffer } from "./SamplesBuffer.js";
-import * as Pitch from "./pitch/Pitch.js"
+import * as Pitch from "./pitch/Pitch.js";
 let pitchMethod;
 //import * as Settings from "./Settings.js"; // must be first or at least before Sound.js!
 //import {ySharedMemory, yAudioWorklet, iSamplesInBlock, maxSampleWl, yWriteToFloatTexture, iPitchMethod} from "./Settings.js"; // must be first or at least before Sound.js!
-import {Settings} from "./Settings.js"; // must be first or at least before Sound.js! ??
+import { Settings } from "./Settings.js"; // must be first or at least before Sound.js! ??
 window.settings = Settings;
 import * as SamplesBuffer from "./SamplesBuffer.js";
 window.samplesBuffer = SamplesBuffer.create();
@@ -168,7 +168,7 @@ export class SoundObject extends Object {
     //mediaStream, pitchMethod_) {
     // ie audioWorklet or scriptProcessor?
     pitchMethod = Pitch.init();
-  
+
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
     //setCapabilities();
@@ -176,23 +176,34 @@ export class SoundObject extends Object {
 
     //Set up soundWorker and pitchWorker from main thread. Also set up message channel BETWEEN them! Also beween audioWorker and soundWorker (possible?)
     //Audio from mic into ring buffer:
-    let msg = (typeof AudioWorkletNode !== "undefined")? "true" : "false";
+    let msg = typeof AudioWorkletNode !== "undefined" ? "true" : "false";
     alert("AudioWorkletNode defined = " + msg);
     if (window.yAudioWorklet) {
       try {
         await audioContext.audioWorklet.addModule("js/sound/mos-audio-worklet-processor.js");
         soundProcessorNode = new window.AudioWorkletNode(audioContext, "mos-audio-worklet-processor");
-        pitchWorker = new Worker("js/sound/pitch/pitchWorker.js", { type: "module" });
-        pitchWorker.postMessage({ command: "sab", value: window.sab });
-        let thiz = this;
+        //pitchWorker = new Worker("js/sound/pitch/pitchWorker.js", { type: "module" });
+        //pitchWorker.postMessage({ command: "sab", value: window.sab });
+        //let thiz = this;
         /*pitchWorker.onmessage = function (e) {
           thiz.pitch = e.data;
           console.log("pitch = " + thiz.pitch); // + "\n");
         };*/
 
         //soundProcessorNode.port.postMessage({ command: "sab", value: window.sab });
-        soundProcessorNode.postMessage({cmd: "Settings", val: Settings});
-        soundProcessorNode.postMessage({cmd: "SamplesBuffer", val: window.samplesBuffer});
+        //soundProcessorNode.postMessage({cmd: "Settings", val: Settings});
+        //soundProcessorNode.postMessage({cmd: "SamplesBuffer", val: window.samplesBuffer});
+
+        soundProcessorNode.port.postMessage({ cmd: "Settings", val: Settings });
+        soundProcessorNode.port.postMessage({ cmd: "SamplesBuffer", val: window.samplesBuffer });
+        soundProcessorNode.port.postMessage({ cmd: "soundWorker", val: 1 }); //problem!
+        soundProcessorNode.port.onmessage = function (e) {
+          if (Settings.iPitchMethodOverride == Settings.iYinJsWorkerMethod) {
+            SamplesBuffer.f32SamplesBuffer[SamplesBuffer.pitchInd] = e.data;
+          } else {
+            pitchSamplesBuffer = e.data; // this should/could be a transfer!?
+          }
+        }
 
       } catch (e) {
         alert("Problem inside js/sound/mos-audio-worklet-processor.js !");
@@ -207,16 +218,15 @@ export class SoundObject extends Object {
         soundWorker = new Worker("js/sound/soundWorker.js", { type: "module" });
         //soundWorker = new Worker("js/sound/pitch/pitchWorker.js", { type: "module" });
         soundWorker.onmessage = function (e) {
-          if ((Settings.iPitchMethodOverride == Settings.iYinJsWorkerMethod)) {
-            SamplesBuffer.f32SamplesBuffer[SamplesBuffer.pitchInd] = e.data; 
+          if (Settings.iPitchMethodOverride == Settings.iYinJsWorkerMethod) {
+            SamplesBuffer.f32SamplesBuffer[SamplesBuffer.pitchInd] = e.data;
           } else {
             pitchSamplesBuffer = e.data; // this should/could be a transfer!?
           }
         };
-        soundWorker.postMessage({cmd: "Settings", val: Settings});
-        soundWorker.postMessage({cmd: "SamplesBuffer", val: window.samplesBuffer});
+        soundWorker.postMessage({ cmd: "Settings", val: Settings });
+        soundWorker.postMessage({ cmd: "SamplesBuffer", val: window.samplesBuffer });
         //soundWorker.postMessage({cmd: "PitchMethod", val: {"pitchMethod": pitchMethod}});
-
       }
       this.setUpScriptProcessor(); //mediaStream, pitchMethod_);
 
@@ -254,7 +264,7 @@ export class SoundObject extends Object {
 First attempt can assume audioWorker but no shared memory! then will work also for ios already.
 */
   // }
-/*
+  /*
   async setUpSoundProcessorOld(mediaStream, pitchMethod_) {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
     // Create a source from our MediaStream
@@ -306,9 +316,8 @@ First attempt can assume audioWorker but no shared memory! then will work also f
         if (soundWorker != null) {
           //let i = e.inputBuffer.getChannelData(0)
           //soundWorker.postMessage(i); // For now for simplicity we post to worker even if sound received by audioWorker rather than script processor
-          soundWorker.postMessage({cmd: "Samples", val: e.inputBuffer.getChannelData(0)});
-          
-          
+          soundWorker.postMessage({ cmd: "Samples", val: e.inputBuffer.getChannelData(0) });
+
           // if (e.inputBuffer.duration != 0.010666666666666666) {
           //   let fred = 0;
           // }

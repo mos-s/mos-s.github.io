@@ -18,12 +18,15 @@
 import Module from "./simple-kernel.wasmmodule.js";
 import { RENDER_QUANTUM_FRAMES, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffer, SamplesBufferWasm } from "./wasm-audio-helper.js";
 //import { iSamplesInBlock, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffer, SamplesBuffer } from "./sound/Sound.js";
-import { yin } from "./pitch/yin.js";
+//import { yin } from "./pitch/yin.js";
 //import * as SamplesBuffer from "./SamplesBuffer.js";
 //import { iSamplesInBlock, window.maxSampleWl } from "./Sound.js";
 //import * as Settings from "../Settings.js";
-let Settings;
-let SamplesBuffer;
+//let Settings;
+//let SamplesBuffer;
+
+let Settings, SamplesBuffer, pitchComputeMethod; // initialised by postMessage from Sound.js
+pitchComputeMethod = yin;// for now
 
 const yDoTiming = false;
 //const window.maxSampleWl = 512; //600 - should b f(samplerate)
@@ -33,7 +36,11 @@ const iBlocksInBuffer = 1;
 
 const WASM_RING = 0;
 const JS_RING = 1;
-const samplesBufferMethod = JS_RING;
+const POST_TO_WORKER = 2; // Could do what we do in soundWorker in here instead but for now post samples to soundworker!
+const ALL_IN_THIS_THREAD = 3;
+
+const samplesBufferMethod = ALL_IN_THIS_THREAD;
+let soundWorker;
 //let SAB;
 /**
  * A simple demonstration of WASM-powered AudioWorkletProcessor.
@@ -42,6 +49,8 @@ const samplesBufferMethod = JS_RING;
  * @extends AudioWorkletProcessor
  */
 //AudioWorkletProcessor = Object;
+let dotProduct, iDotProductLength;
+
 class MosAudioWorkletProcessor extends AudioWorkletProcessor {
   /**
    * @constructor
@@ -51,11 +60,19 @@ class MosAudioWorkletProcessor extends AudioWorkletProcessor {
     this.port.onmessage = (e) => {
       switch (e.data.cmd) {
         case "SamplesBuffer":
-          SamplesBuffer = e.data.val;//init(e.data.val);
-          this.free2 = 0; //??
+          SamplesBuffer = e.data.val; //.init(e.data.val);
+          break;
+        case "PitchMethod":
+          pitchComputeMethod = e.data.val;
           break;
         case "Settings":
           Settings = e.data.val;
+          dotProduct = new Float32Array(Settings.maxSampleWl);
+          iDotProductLength = dotProduct.length;
+          break;
+        case "soundWorker":
+          //soundWorker = new Worker("js/sound/soundWorker.js", { type: "module" }); // Worker not defined!
+          let fred = 0;
           break;
         default:
           alert("Illegal cmd in mos-audio-worklet-processor");
@@ -73,7 +90,7 @@ class MosAudioWorkletProcessor extends AudioWorkletProcessor {
 
     this._kernel = new Module.SimpleKernel();
 
-    this.port.postMessage("Hi from mos-audio-worklet-processor!"); // to main?
+   // this.port.postMessage("Hi from mos-audio-worklet-processor!"); // to main?
   }
 
   /*fred() {
@@ -145,23 +162,24 @@ class MosAudioWorkletProcessor extends AudioWorkletProcessor {
   process(inputs, outputs, parameters) {
     // Just the left channel of the 2 d inputs array.
     if (inputs[0][0] != null) {
-      var iIts = yDoTiming ? 1000 : 1;
+      //var iIts = yDoTiming ? 1000 : 1;
       //let startNsTime = window.performance.now(); window not defined
-      for (let i = 0; i < iIts; i++) {
-        switch (samplesBufferMethod) {
-          case WASM_RING:
-            //this.pfSamples.set(inputs[0][0]);
+      //for (let i = 0; i < iIts; i++) {
+      switch (samplesBufferMethod) {
+        case WASM_RING:
+          //this.pfSamples.set(inputs[0][0]);
 
-            //this._heapInputBuffer.getChannelData(0).set(inputs[0][0]); //this could put new samples in correct place in circular malloced wasm buffer!?
-            let fred = this._heapInputBuffer.getChannelData(0);
-            fred.set(inputs[0][0]);
+          //this._heapInputBuffer.getChannelData(0).set(inputs[0][0]); //this could put new samples in correct place in circular malloced wasm buffer!?
+          let fred = this._heapInputBuffer.getChannelData(0);
+          fred.set(inputs[0][0]);
 
-            this._kernel.process(this._heapInputBuffer.getHeapAddress(), this._heapOutputBuffer.getHeapAddress(), 1);
+          this._kernel.process(this._heapInputBuffer.getHeapAddress(), this._heapOutputBuffer.getHeapAddress(), 1);
 
-            outputs[0][0].set(this._heapOutputBuffer.getChannelData(0));
+          outputs[0][0].set(this._heapOutputBuffer.getChannelData(0));
 
-            break;
-          case JS_RING:
+          break;
+        case JS_RING:
+          {
             let samplesBuffer = SamplesBuffer.f32SamplesBuffer;
             let free = samplesBuffer[SamplesBuffer.freeInd];
             samplesBuffer.set(inputs[0][0], free); // might this be faster with uint8?
@@ -178,15 +196,190 @@ class MosAudioWorkletProcessor extends AudioWorkletProcessor {
               free = 0;
             }
             samplesBuffer[SamplesBuffer.freeInd] = free;
+          }
+          break;
+        case POST_TO_WORKER:
+          if (soundWorker != null) {
+            //soundWorker.postMessage({ cmd: "Samples", val: e.inputBuffer.getChannelData(0) }); from soundProcessorNode.onaudioprocess
+            soundWorker.postMessage({ cmd: "Samples", val: inputs[0][0] });
+          }
+          break;
 
-            break;
-        }
+        case ALL_IN_THIS_THREAD:
+          {
+            let newSamples = inputs[0][0]; //e.data.val;
+            let samplesBuffer = SamplesBuffer.f32SamplesBuffer;
+            let free = samplesBuffer[SamplesBuffer.freeInd];
+            samplesBuffer.set(newSamples, free); // might this be faster with uint8?
+
+            // Copy also to other end of ring buffer if appropriate
+            if (this.free2 >= SamplesBuffer.iSamples && this.free2 < SamplesBuffer.iAugmentedSamples) {
+              samplesBuffer.set(newSamples, this.free2); // might this be faster with uint8?
+              this.free2 += Settings.iSamplesInBlock;
+            }
+
+            free += Settings.iSamplesInBlock;
+            if (free >= SamplesBuffer.iSamples) {
+              this.free2 = free;
+              free = 0;
+            }
+            samplesBuffer[SamplesBuffer.freeInd] = free;
+
+            //---------------------------Send pitch samples to main thread on every samples block! ----------------------------
+            let iMaxWlStart = free - Settings.maxSampleWl * 2;
+            if (iMaxWlStart < 0) {
+              iMaxWlStart += SamplesBuffer.iSamples; //iSamplesInBlock; //this_iSamples;
+            }
+            var iWidth = Settings.maxSampleWl * 2; //window.maxSampleWl * 2;
+            //var iByteWidth = 4;//iWidth * 4; // float is 4 bytes
+            //works - var slice = this_samplesBuffer.slice(iMaxWlStart, iMaxWlStart + iWidth) ;
+            //var fInputTexBuffer = new Float32Array(slice, iMaxWlStart * 4, iWidth); // can use dataview!? also - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array/Float32Array
+            //QUESTION: Better if main asked for samples? (would save wasted posts)
+
+            var pitchSamplesBuffer = new Float32Array(samplesBuffer.buffer, iMaxWlStart * 4, iWidth); // Would like to transfer this! I think it is fast because basically just sends pointer!!??
+            /*if (slice[1] != 0) {
+        let fred = 0;
+      }*/
+            if (Settings.iPitchMethodOverride == Settings.iYinJsWorkerMethod) {
+              let pitch = pitchComputeMethod(pitchSamplesBuffer);
+              //samplesBuffer[SamplesBuffer.pitchInd] = pitch;
+              this.port.postMessage(pitch);
+            } else {
+              // Send samples to main thread for computation
+              this.port.postMessage(pitchSamplesBuffer); // ie we send (to main.onMessage) just enough of  most recent samples for pitch deduction! Avoids shared memory!!?
+            }
+          }
+          break;
+        default:
+          alert("Illegal samplesBufferMethod in mos-audio-worklet-processor!");
       }
+      //}
     }
     return true;
   }
 }
 
-//}
+function yin(pitchSamplesBuffer) {
+  yinDotProduct(pitchSamplesBuffer);
+  return yinComputeFromDotProduct();
+}
+
+function yinDotProduct(pitchSamplesBuffer) {
+  //}, max_sample_wl_param, iStartIndex) {
+  // Set buffer size to the highest power of two below the provided buffer's length.
+  /*let bufferSize;
+    for (bufferSize = 1; bufferSize < float32AudioBuffer.length; bufferSize *= 2);
+    bufferSize /= 2;
+  */
+  // Set up the yinBuffer as described in step one of the YIN paper.
+  //const yinBufferLength = window.maxSampleWl; //max_sample_wl_param;//bufferSize / 2;
+  //const dotProduct = new Float32Array(yinBufferLength);
+
+  // Compute the difference function as described in step 2 of the YIN paper.
+  for (let t = 0; t < iDotProductLength; t++) {
+    dotProduct[t] = 0;
+  }
+  for (let t = 1; t < iDotProductLength; t++) {
+    //  for (let i = iStartIndex; i < iStartIndex + yinBufferLength; i++) {
+    for (let i = 0; i < iDotProductLength; i++) {
+      const delta = pitchSamplesBuffer[i] - pitchSamplesBuffer[i + t];
+      dotProduct[t] += delta * delta;
+    }
+  }
+}
+
+function yinComputeFromDotProduct() {
+  // Compute the cumulative mean normalized difference as described in step 3 of the paper.
+  dotProduct[0] = 1;
+  dotProduct[1] = 1;
+  let runningSum = 0;
+  for (let t = 1; t < iDotProductLength; t++) {
+    runningSum += dotProduct[t];
+    dotProduct[t] *= t / runningSum; //yinBuffer[t] = yinBuffer[t] * (t / runningSum);
+  }
+
+  const threshold = 0.07;
+  const sampleRate = 48000;
+  const probabilityThreshold = 0.1;
+
+  let probability = 0,
+    tau;
+
+  // Compute the absolute threshold as described in step 4 of the paper.
+  // Since the first two positions in the array are 1,
+  // we can start at the third position.
+  for (tau = 2; tau < iDotProductLength; tau++) {
+    if (dotProduct[tau] < threshold) {
+      while (tau + 1 < iDotProductLength && dotProduct[tau + 1] < dotProduct[tau]) {
+        tau++;
+      }
+      // found tau, exit loop and return
+      // store the probability
+      // From the YIN paper: The threshold determines the list of
+      // candidates admitted to the set, and can be interpreted as the
+      // proportion of aperiodic power tolerated
+      // within a periodic signal.
+      //
+      // Since we want the periodicity and and not aperiodicity:
+      // periodicity = 1 - aperiodicity
+      probability = 1 - dotProduct[tau];
+      break;
+    }
+  }
+
+  // if no pitch found, return null.
+  if (tau === iDotProductLength || dotProduct[tau] >= threshold) {
+    // if tau === iDotProductLength prevents evaluation of dotProduct[tau] which would be one past last elt of dotProduct!
+    return null;
+  }
+
+  // If probability too low, return -1.
+  if (probability < probabilityThreshold) {
+    return null;
+  }
+
+  /**
+   * Implements step 5 of the AUBIO_YIN paper. It refines the estimated tau
+   * value using parabolic interpolation. This is needed to detect higher
+   * frequencies more precisely. See http://fizyka.umk.pl/nrbook/c10-2.pdf and
+   * for more background
+   * http://fedc.wiwi.hu-berlin.de/xplore/tutorials/xegbohtmlnode62.html
+   */
+  let betterTau, x0, x2;
+  if (tau < 1) {
+    x0 = tau;
+  } else {
+    x0 = tau - 1;
+  }
+  if (tau + 1 < iDotProductLength) {
+    x2 = tau + 1;
+  } else {
+    x2 = tau;
+  }
+  if (x0 === tau) {
+    if (dotProduct[tau] <= dotProduct[x2]) {
+      betterTau = tau;
+    } else {
+      betterTau = x2;
+    }
+  } else if (x2 === tau) {
+    if (dotProduct[tau] <= dotProduct[x0]) {
+      betterTau = tau;
+    } else {
+      betterTau = x0;
+    }
+  } else {
+    const s0 = dotProduct[x0];
+    const s1 = dotProduct[tau];
+    const s2 = dotProduct[x2];
+    // fixed AUBIO implementation, thanks to Karl Helgason:
+    // (2.0f * s1 - s2 - s0) was incorrectly multiplied with -1
+    betterTau = tau + (s2 - s0) / (2 * (2 * s1 - s2 - s0));
+  }
+
+  return sampleRate / betterTau;
+} // end of class
+
+
 
 registerProcessor("mos-audio-worklet-processor", MosAudioWorkletProcessor);

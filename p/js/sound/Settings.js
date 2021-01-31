@@ -16,7 +16,7 @@ export let Settings;
 //export const iYinMethod = 1;
 
 // overrides
-const yAudioWorkletOverride = false;
+//const yAudioWorkletOverride = false;
 const ySharedMemoryOverride = false;
 const iScriptProcessorSamplesInBlockOverride = 1024;// 1024  seems to almost completely eliminate dropped sample blocks on lenovo.
 //const maxWlOverride = 256;
