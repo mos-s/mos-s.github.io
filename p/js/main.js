@@ -241,7 +241,7 @@ function displayPitch(timestamp) {
   if (soundObject != null) {
     displayPitchMsTime = performance.now();
     Pitch.displayPitch(getLatestPitch());
-    Pitch.displayWave();
+///    Pitch.displayWave();
     let earlyMs = displayPitchMsTime - window.computedAndSavedPitchMsTime;
     if (earlyMs < (16.66 + 2.0)) {
       delayPitchComputeToJustBeforeNextRenderMs += (earlyMs - 1.0);
