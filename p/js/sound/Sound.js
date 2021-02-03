@@ -196,17 +196,46 @@ export class SoundObject extends Object {
 
         soundProcessorNode.port.postMessage({ cmd: "Settings", val: Settings });
         soundProcessorNode.port.postMessage({ cmd: "SamplesBuffer", val: window.samplesBuffer });
-        soundProcessorNode.port.postMessage({ cmd: "soundWorker", val: 1 }); //problem!
+        //soundProcessorNode.port.postMessage({ cmd: "soundWorker", val: 1 }); //problem!
         soundProcessorNode.port.onmessage = function (e) {
-          if (Settings.iPitchMethodOverride == Settings.iYinJsWorkerMethod) {
+          if (Settings.iPitchMethodOverride == Settings.PitchMethods.iYinJsWorkerMethod) {
+            SamplesBuffer.f32SamplesBuffer[SamplesBuffer.pitchInd] = e.data;
+          } else {
+            pitchSamplesBuffer = e.data; // this should/could be a transfer!?
+          }
+        }
+        //soundWorker = new SharedWorker("js/sound/sharedSoundWorker.js", { type: "module" });
+        soundWorker = new Worker("js/sound/soundWorker.js", { type: "module" });
+        let fred = soundWorker.port;
+
+        soundWorker.postMessage({ cmd: "Settings", val: Settings });
+        soundWorker.postMessage({ cmd: "SamplesBuffer", val: window.samplesBuffer });
+
+
+        soundWorker.onmessage = function (e) {
+          if (Settings.iPitchMethodOverride == Settings.PitchMethods.iYinJsWorkerMethod) {
             SamplesBuffer.f32SamplesBuffer[SamplesBuffer.pitchInd] = e.data;
           } else {
             pitchSamplesBuffer = e.data; // this should/could be a transfer!?
           }
         }
 
+        soundWorker.postMessage({ cmd: "AudioPort", val: 1 }, [soundProcessorNode.port]); // after which audioWorklet postMessage will go to soundWorker!
+///        soundProcessorNode.port.postMessage({ cmd: "WorkerPort", val: 1 }, [soundWorker.port]);
+        //soundProcessorNode.port.postMessage({ cmd: "SendMessage", val: 1 });
+        //soundWorker.postMessage([soundProcessorNode.port]);
+        let urls = 1;
+        /*soundWorker.postMessage(
+          {
+            urls,
+          },
+          [soundProcessorNode.port]
+        );*/
+
+        let martha = 0;
+
       } catch (e) {
-        alert("Problem inside js/sound/mos-audio-worklet-processor.js !");
+        alert("Problem inside js/sound/mos-audio-worklet-processor.js !: " + e);
       }
     } else {
       // no audio worker

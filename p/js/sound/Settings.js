@@ -8,6 +8,12 @@ IMPROVEMENTS
     
 */
 import {iYinJsMethod, iGpgpuMethod, iYinJsWorkerMethod} from "./pitch/Pitch.js";
+export let PitchMethods = {};
+PitchMethods.iYinJsMethod = iYinJsMethod;
+PitchMethods.iGpgpuMethod = iGpgpuMethod;
+PitchMethods.iYinJsWorkerMethod = iYinJsWorkerMethod;
+
+
 
 export let Settings;
 
@@ -21,7 +27,7 @@ const ySharedMemoryOverride = false;
 const iScriptProcessorSamplesInBlockOverride = 1024;// 1024  seems to almost completely eliminate dropped sample blocks on lenovo.
 //const maxWlOverride = 256;
 //const yWriteToFloatTextureOverride = false;
-const iPitchMethodOverride = iYinJsWorkerMethod;//iYinJsMethod;
+const iPitchMethodOverride = iYinJsMethod;//iYinJsWorkerMethod;//iYinJsMethod;
 
 // default values
 const iScriptProcessorDefaultSamplesInBlock = 512;
@@ -46,6 +52,7 @@ if (typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScop
   window.maxSampleWl = maxSampleWl;
   window.yWriteToFloatTexture = yWriteToFloatTexture;
   window.iPitchMethod = iPitchMethod;
+  window.PitchMethods = PitchMethods;
 }
 
 function initVars() {
@@ -68,7 +75,7 @@ function initVars() {
 
   iPitchMethod = typeof iPitchMethodOverride !== "undefined" ? iPitchMethodOverride : iPitchMethodDefault;
 
-  Settings = { ySharedMemory, yAudioWorklet, iSamplesInBlock, maxSampleWl, yWriteToFloatTexture, iPitchMethod };
+  Settings = { ySharedMemory, yAudioWorklet, iSamplesInBlock, maxSampleWl, yWriteToFloatTexture, iPitchMethod, PitchMethods};
   var fred = 0;
 }
 

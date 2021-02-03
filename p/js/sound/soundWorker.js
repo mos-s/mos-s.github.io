@@ -4,7 +4,7 @@
 //const {computeMethod} = require("./pitch/Pitch.js");
 //import * as SamplesBuffer from "./SamplesBufferOld.js";
 let Settings, SamplesBuffer, pitchComputeMethod; // initialised by postMessage from Sound.js
-pitchComputeMethod = yin;// for now
+pitchComputeMethod = yin; // for now
 //import * as Settings from "../SettingsOld.js";
 //SamplesBuffer.init(1024 * 3); // causes "uncaught ref to window!"
 /*var i = 0;
@@ -115,6 +115,7 @@ onmessage = function (e) {
 };
 */
 let dotProduct, iDotProductLength;
+let audioPort;
 onmessage = function (e) {
   switch (e.data.cmd) {
     case "SamplesBuffer":
@@ -128,55 +129,71 @@ onmessage = function (e) {
       dotProduct = new Float32Array(Settings.maxSampleWl);
       iDotProductLength = dotProduct.length;
       break;
-    case "Samples":
-      /*if (SamplesBuffer.f32SamplesBuffer == null) {
+    case "AudioPort":
+      {
+        //let port = e.data.val;
+        audioPort = e.ports[0];
+        audioPort.postMessage({ cmd: "FromWorker", val: 1 });
+        //sharedWorkerPort.onmessage = event => postMessage(event.data);
+        audioPort.onmessage = function (e) {
+          //console.log("onmessage!!" + e.data);
+          switch (e.data.cmd) {
+            case "Samples":
+              /*if (SamplesBuffer.f32SamplesBuffer == null) {
 
-    SamplesBuffer.init(1024 * 3);
-  }*/
-      let newSamples = e.data.val;
-      let samplesBuffer = SamplesBuffer.f32SamplesBuffer;
-      let free = samplesBuffer[SamplesBuffer.freeInd];
-      samplesBuffer.set(newSamples, free); // might this be faster with uint8?
+          SamplesBuffer.init(1024 * 3);
+        }*/
+              let newSamples = e.data.val;
+              let samplesBuffer = SamplesBuffer.f32SamplesBuffer;
+              let free = samplesBuffer[SamplesBuffer.freeInd];
+              samplesBuffer.set(newSamples, free); // might this be faster with uint8?
 
-      // Copy also to other end of ring buffer if appropriate
-      if (this.free2 >= SamplesBuffer.iSamples && this.free2 < SamplesBuffer.iAugmentedSamples) {
-        samplesBuffer.set(newSamples, this.free2); // might this be faster with uint8?
-        this.free2 += Settings.iSamplesInBlock;
-      }
+              // Copy also to other end of ring buffer if appropriate
+              if (this.free2 >= SamplesBuffer.iSamples && this.free2 < SamplesBuffer.iAugmentedSamples) {
+                samplesBuffer.set(newSamples, this.free2); // might this be faster with uint8?
+                this.free2 += Settings.iSamplesInBlock;
+              }
 
-      free += Settings.iSamplesInBlock;
-      if (free >= SamplesBuffer.iSamples) {
-        this.free2 = free;
-        free = 0;
-      }
-      samplesBuffer[SamplesBuffer.freeInd] = free;
+              free += Settings.iSamplesInBlock;
+              if (free >= SamplesBuffer.iSamples) {
+                this.free2 = free;
+                free = 0;
+              }
+              samplesBuffer[SamplesBuffer.freeInd] = free;
 
-      //---------------------------Send pitch samples to main thread on every samples block! ----------------------------
-      let iMaxWlStart = free - Settings.maxSampleWl * 2;
-      if (iMaxWlStart < 0) {
-        iMaxWlStart += SamplesBuffer.iSamples; //iSamplesInBlock; //this_iSamples;
-      }
-      var iWidth = Settings.maxSampleWl * 2; //window.maxSampleWl * 2;
-      //var iByteWidth = 4;//iWidth * 4; // float is 4 bytes
-      //works - var slice = this_samplesBuffer.slice(iMaxWlStart, iMaxWlStart + iWidth) ;
-      //var fInputTexBuffer = new Float32Array(slice, iMaxWlStart * 4, iWidth); // can use dataview!? also - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array/Float32Array
-      //QUESTION: Better if main asked for samples? (would save wasted posts)
+              //---------------------------Send pitch samples to main thread on every samples block! ----------------------------
+              let iMaxWlStart = free - Settings.maxSampleWl * 2;
+              if (iMaxWlStart < 0) {
+                iMaxWlStart += SamplesBuffer.iSamples; //iSamplesInBlock; //this_iSamples;
+              }
+              var iWidth = Settings.maxSampleWl * 2; //window.maxSampleWl * 2;
+              //var iByteWidth = 4;//iWidth * 4; // float is 4 bytes
+              //works - var slice = this_samplesBuffer.slice(iMaxWlStart, iMaxWlStart + iWidth) ;
+              //var fInputTexBuffer = new Float32Array(slice, iMaxWlStart * 4, iWidth); // can use dataview!? also - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array/Float32Array
+              //QUESTION: Better if main asked for samples? (would save wasted posts)
 
-      var pitchSamplesBuffer = new Float32Array(samplesBuffer.buffer, iMaxWlStart * 4, iWidth); // Would like to transfer this! I think it is fast because basically just sends pointer!!??
-      /*if (slice[1] != 0) {
-    let fred = 0;
-  }*/
-      if (Settings.iPitchMethodOverride == Settings.iYinJsWorkerMethod) {
-        let pitch = pitchComputeMethod(pitchSamplesBuffer);
-        //samplesBuffer[SamplesBuffer.pitchInd] = pitch;
-        postMessage(pitch);
-      } else {
-        // Send samples to main thread for computation
-        postMessage(pitchSamplesBuffer); // ie we send (to main.onMessage) just enough of  most recent samples for pitch deduction! Avoids shared memory!!?
+              var pitchSamplesBuffer = new Float32Array(samplesBuffer.buffer, iMaxWlStart * 4, iWidth); // Would like to transfer this! I think it is fast because basically just sends pointer!!??
+              /*if (slice[1] != 0) {
+          let fred = 0;
+        }*/
+              if (Settings.iPitchMethod == Settings.PitchMethods.iYinJsWorkerMethod) {
+                let pitch = pitchComputeMethod(pitchSamplesBuffer);
+                //samplesBuffer[SamplesBuffer.pitchInd] = pitch;
+                postMessage(pitch);
+              } else {
+                // Send samples to main thread for computation
+                postMessage(pitchSamplesBuffer); // ie we send (to main.onMessage) just enough of  most recent samples for pitch deduction! Avoids shared memory!!?
+              }
+              break;
+            default:
+              console.log("invalid cmd in soundWorker!: " + e.data.cmd);
+              
+          }
+        };
       }
       break;
     default:
-      alert("invalid cmd in soundWorker!");
+      console.log("invalid cmd in soundWorker!: " + e.data.cmd);
   }
 };
 
@@ -300,4 +317,3 @@ function yinComputeFromDotProduct() {
 
   return sampleRate / betterTau;
 }
-

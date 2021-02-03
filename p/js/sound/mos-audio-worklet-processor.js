@@ -26,7 +26,8 @@ import { RENDER_QUANTUM_FRAMES, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffe
 //let SamplesBuffer;
 
 let Settings, SamplesBuffer, pitchComputeMethod; // initialised by postMessage from Sound.js
-pitchComputeMethod = yin;// for now
+pitchComputeMethod = yin; // for now
+let soundWorkerPort;
 
 const yDoTiming = false;
 //const window.maxSampleWl = 512; //600 - should b f(samplerate)
@@ -39,8 +40,8 @@ const JS_RING = 1;
 const POST_TO_WORKER = 2; // Could do what we do in soundWorker in here instead but for now post samples to soundworker!
 const ALL_IN_THIS_THREAD = 3;
 
-const samplesBufferMethod = ALL_IN_THIS_THREAD;
-let soundWorker;
+const samplesBufferMethod = POST_TO_WORKER;
+//let soundWorker;
 //let SAB;
 /**
  * A simple demonstration of WASM-powered AudioWorkletProcessor.
@@ -50,7 +51,8 @@ let soundWorker;
  */
 //AudioWorkletProcessor = Object;
 let dotProduct, iDotProductLength;
-
+//let soundWorkerz;// = new Worker("js/sound/sharedSoundWorker.js", { type: "module" }); // gave error: InvalidStateError: Failed to construct 'AudioWorkletNode': AudioWorkletNode cannot be created: The node name 'mos-audio-worklet-processor' is not defined in AudioWorkletGlobalScope.
+//let fred = 0;
 class MosAudioWorkletProcessor extends AudioWorkletProcessor {
   /**
    * @constructor
@@ -61,6 +63,7 @@ class MosAudioWorkletProcessor extends AudioWorkletProcessor {
       switch (e.data.cmd) {
         case "SamplesBuffer":
           SamplesBuffer = e.data.val; //.init(e.data.val);
+          //soundWorkerz = new Worker("js/sound/sharedSoundWorker.js", { type: "module" }); // gave error: Worker is not defined
           break;
         case "PitchMethod":
           pitchComputeMethod = e.data.val;
@@ -70,10 +73,24 @@ class MosAudioWorkletProcessor extends AudioWorkletProcessor {
           dotProduct = new Float32Array(Settings.maxSampleWl);
           iDotProductLength = dotProduct.length;
           break;
-        case "soundWorker":
+        case "WorkerPort":
           //soundWorker = new Worker("js/sound/soundWorker.js", { type: "module" }); // Worker not defined!
-          let fred = 0;
+          //[sharedWorkerPort] = e.ports; // meaning?
+          soundWorkerPort = e.ports[0];
+          soundWorkerPort.postMessage("bingo");
+          //sharedWorkerPort.onmessage = event => postMessage(event.data);
+          /*sharedWorkerPort.onmessage = function (e) {
+            console.log("onmessage!!" + e.data);
+            let fred = 0;
+          };*/
           break;
+        case "SendMessage":
+          soundWorkerPort.postMessage("bingo");
+          break;
+        case "FromWorker":
+          this.port.postMessage("bingo");
+          break;
+
         default:
           alert("Illegal cmd in mos-audio-worklet-processor");
         //SamplesBuffer.init(event.data.value);
@@ -90,7 +107,7 @@ class MosAudioWorkletProcessor extends AudioWorkletProcessor {
 
     this._kernel = new Module.SimpleKernel();
 
-   // this.port.postMessage("Hi from mos-audio-worklet-processor!"); // to main?
+    // this.port.postMessage("Hi from mos-audio-worklet-processor!"); // to main?
   }
 
   /*fred() {
@@ -161,6 +178,7 @@ class MosAudioWorkletProcessor extends AudioWorkletProcessor {
 
   process(inputs, outputs, parameters) {
     // Just the left channel of the 2 d inputs array.
+    //sharedWorkerPort.postMessage("bingo");
     if (inputs[0][0] != null) {
       //var iIts = yDoTiming ? 1000 : 1;
       //let startNsTime = window.performance.now(); window not defined
@@ -199,13 +217,15 @@ class MosAudioWorkletProcessor extends AudioWorkletProcessor {
           }
           break;
         case POST_TO_WORKER:
-          if (soundWorker != null) {
+          if (this.port != null) {
             //soundWorker.postMessage({ cmd: "Samples", val: e.inputBuffer.getChannelData(0) }); from soundProcessorNode.onaudioprocess
-            soundWorker.postMessage({ cmd: "Samples", val: inputs[0][0] });
+            this.port.postMessage({ cmd: "Samples", val: inputs[0][0] });
+            //this.port.postMessage([111, 5]);
           }
           break;
 
         case ALL_IN_THIS_THREAD:
+          // This currently is wrong because pitch computation takes longer then 128 frame sample block interval!!
           {
             let newSamples = inputs[0][0]; //e.data.val;
             let samplesBuffer = SamplesBuffer.f32SamplesBuffer;
@@ -379,7 +399,5 @@ function yinComputeFromDotProduct() {
 
   return sampleRate / betterTau;
 } // end of class
-
-
 
 registerProcessor("mos-audio-worklet-processor", MosAudioWorkletProcessor);
