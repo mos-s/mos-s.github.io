@@ -228,7 +228,7 @@ class MosAudioWorkletProcessor extends AudioWorkletProcessor {
         case ALL_IN_THIS_THREAD:
           // This currently is wrong because pitch computation takes longer then 128 frame sample block interval!!
           {
-            let newSamples = newSamples; //e.data.val;
+            let newSamples = newSamples;
             //let samplesBuffer = SamplesBuffer.f32SamplesBuffer;
             let free = samplesBuffer[SamplesBuffer.freeInd];
             samplesBuffer.set(newSamples, free); // might this be faster with uint8?
