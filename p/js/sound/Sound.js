@@ -225,7 +225,7 @@ export class SoundObject extends Object {
     // ============== Set up soundProcessor - ie AudioWorkletNode or ScriptProcessor ==============
     if (window.yAudioWorklet) {
       try {
-        await audioContext.audioWorklet.addModule("js/sound/mos-audio-worklet.js?s=s");
+        await audioContext.audioWorklet.addModule("js/sound/mos-audio-worklet.js");
         soundProcessor = new window.AudioWorkletNode(audioContext, "mos-audio-worklet");
         if (window.ySharedMemory) {
           //AudioWorklet will write directly to Settings.f32buffer which is shared memory so will need Settings and SamplesBuffer.
