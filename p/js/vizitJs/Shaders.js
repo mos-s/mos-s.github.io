@@ -396,7 +396,7 @@ shaders.floatInputAndOutputTexDotProduct = function (max_wl) {
   const float fMaxWl = ${fMaxWl};
   
   void main()
-  { /* iMaxSampleWl = iMaxFrameWl * poSamples->iFrameSamples; 600 AND MIN 12 */
+  { /* iiMaxSampleWl = iMaxFrameWl * poSamples->iFrameSamples; 600 AND MIN 12 */
       float fBaseTexS = vTextureCoord.s/2.0;  /* because input tex twice as wide as output tex */
       float fInputTexStep = 1.0/(fMaxWl * 2.0); 
       float fTotal = 0.0;
@@ -445,7 +445,7 @@ shaders.floatInputAndOutputTexDotProduct4 = function (max_wl) {
   const float fMaxWl = ${fMaxWl};
   
   void main()
-  { /* iMaxSampleWl = iMaxFrameWl * poSamples->iFrameSamples; 600 AND MIN 12 */
+  { /* iiMaxSampleWl = iMaxFrameWl * poSamples->iFrameSamples; 600 AND MIN 12 */
     float fTotal;
     float fBaseTexS = vTextureCoord.s/2.0;  /* because input tex twice as wide as output tex */
     float fInputTexStep = 1.0/(fMaxWl * 2.0); 
@@ -498,7 +498,7 @@ shaders.floatInputAndOutputTexDotProduct_RGBA = function (max_wl) {
   
   float afSamples[1024];
   void main()
-  { /* iMaxSampleWl = iMaxFrameWl * poSamples->iFrameSamples; 600 AND MIN 12 */
+  { /* iiMaxSampleWl = iMaxFrameWl * poSamples->iFrameSamples; 600 AND MIN 12 */
     float fBase = floor(vTextureCoord.s * fMaxWl/2.0);  
       float fInputTexStep = 1.0/(fMaxWl * 2.0); 
       float fTotal = 0.0;

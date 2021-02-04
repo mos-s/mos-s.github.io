@@ -8,10 +8,10 @@ TODO
   game loop? pitch queue?
   ring buffer
 
-window.maxSampleWl
+window.iMaxSampleWl
   In audioworklet allows 128 sample min buff otherwise processor allows minimum of 256 samples.
   The higher the sample rate the lower the latency due to this buffer!
-  However our pitch algorithm needs window.maxSampleWl samples to detect lowest note in range (eg recorder).
+  However our pitch algorithm needs window.iMaxSampleWl samples to detect lowest note in range (eg recorder).
   So we need to queue the buffers (ie need ring buffer) to cover the lowest notes!
   It might be possible to modify algorithm so looks for high notes (up to length of available samples - eg one native buffer's worth) first and then lower notes.
     What kind of effect on reliability does shorter correlation range have?
@@ -134,9 +134,6 @@ function init(stream) {
         soundWorker = new Worker("soundWorker.js", { type: "module" });
         //soundWorker = new Worker("exampleWorker.js", { type: "module" });
         window.soundWorker = soundWorker;
-        //window.pitchWorker = new SharedWorker("pitchWorker.js");
-        //pitchWorker = new Worker("pitchWorker.js", { type: "module" });
-        //window.pitchWorker = pitchWorker;
 
         var fred = 0;
       }
@@ -164,9 +161,8 @@ function init(stream) {
       /*soundWorker.onmessage = function (e) {
         SoundObject.prototype.setWaveBuffer(e.data)
       };
-      pitchWorker.onmessage = function (e) {
-        this.postMessage(1111);
-      };*/
+    
+      */
     } else {
       document.getElementById("result").innerHTML = "Sorry, your browser does not support Web Workers...";
     }
@@ -294,13 +290,13 @@ function computePitch(timestamp) {
 
 /*// time yin
 let this_samplesBuffer = new Float32Array(10 * 512);
-let window.maxSampleWl = 256;
+let window.iMaxSampleWl = 256;
 let iMaxWlStart = 0;
 var startNsTime = performance.now();
 var iIts = 1000;
 let this_pitch;
 for (var i = 0; i < iIts; i++) {
-  this_pitch = yin(this_samplesBuffer, window.maxSampleWl, iMaxWlStart);
+  this_pitch = yin(this_samplesBuffer, window.iMaxSampleWl, iMaxWlStart);
   //console.log("\nthis_pitch = " + i);
 }
 var ellapsedItsMs = performance.now() - startNsTime;

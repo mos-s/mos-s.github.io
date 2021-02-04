@@ -1,10 +1,11 @@
-//import {  window.maxSampleWl } from "./Sound.js";
+//import {  window.iMaxSampleWl } from "./Sound.js";
 
 //const { pitchSamplesBuffer } = require("./Sound");
 //const {computeMethod} = require("./pitch/Pitch.js");
 //import * as SamplesBuffer from "./SamplesBufferOld.js";
 let Settings, SamplesBuffer, pitchComputeMethod; // initialised by postMessage from Sound.js
 pitchComputeMethod = yin; // for now
+let samplesBuffer;
 //import * as Settings from "../SettingsOld.js";
 //SamplesBuffer.init(1024 * 3); // causes "uncaught ref to window!"
 /*var i = 0;
@@ -17,11 +18,11 @@ function timedCount() {
 
 timedCount();
 */
-//import { iSamplesInBlock, SAMPLE_BLOCKS, window.maxSampleWl } from "./js/sound/Sound.js";
+//import { iSamplesInBlock, SAMPLE_BLOCKS, window.iMaxSampleWl } from "./js/sound/Sound.js";
 //import * as gpgpu from "../gpgpu.js";
 //import { yin } from "./js/sound/pitch/yin.js";
 /*
-const window.maxSampleWl = 512; //600 - should b f(samplerate)
+const window.iMaxSampleWl = 512; //600 - should b f(samplerate)
 const iSamplesInBlock = 512; //256; //128;
 const SAMPLE_BLOCKS = 16;
 
@@ -57,9 +58,9 @@ onmessage = function (e) {
     let inputs = e.data;
     if (this_samplesBuffer == undefined) {
       this_iSamples = iSamplesInBlock * SAMPLE_BLOCKS;
-      this.iBlocksContainingTwoMaxWaves = Math.ceil((window.maxSampleWl * 2) / iSamplesInBlock);
-      //if (this.iBlocksContainingMaxSampleWl > SAMPLE_BLOCKS) {
-      // window.alert("iBlocksContainingMaxSampleWl > SAMPLE_BLOCKS not allowed!");
+      this.iBlocksContainingTwoMaxWaves = Math.ceil((window.iMaxSampleWl * 2) / iSamplesInBlock);
+      //if (this.iBlocksContainingiMaxSampleWl > SAMPLE_BLOCKS) {
+      // window.alert("iBlocksContainingiMaxSampleWl > SAMPLE_BLOCKS not allowed!");
       // }
       this.iActualBufferLength = this_iSamples + iSamplesInBlock * this.iBlocksContainingTwoMaxWaves;
       this_samplesBuffer = new Float32Array(this.iActualBufferLength);
@@ -97,11 +98,11 @@ onmessage = function (e) {
     }
 
    
-    let iMaxWlStart = free - window.maxSampleWl * 2;
+    let iMaxWlStart = free - window.iMaxSampleWl * 2;
     if (iMaxWlStart < 0) {
       iMaxWlStart += this_iSamples;
     }
-    var iWidth = 512 * 2;//window.maxSampleWl * 2;
+    var iWidth = 512 * 2;//window.iMaxSampleWl * 2;
     //var iByteWidth = 4;//iWidth * 4; // float is 4 bytes
     //works - var slice = this_samplesBuffer.slice(iMaxWlStart, iMaxWlStart + iWidth) ;
     //var fInputTexBuffer = new Float32Array(slice, iMaxWlStart * 4, iWidth); // can use dataview!? also - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array/Float32Array
@@ -115,67 +116,113 @@ onmessage = function (e) {
 };
 */
 let dotProduct, iDotProductLength;
-let audioPort;
+let audioWorkletPort;
 onmessage = function (e) {
   switch (e.data.cmd) {
+    case "Samples":
+      // Put this in a function because duplicated below!?
+      {
+        let newSamples = e.data.val;
+        //let samplesBuffer = SamplesBuffer.f32SamplesBuffer;
+        let free = samplesBuffer[SamplesBuffer.freeInd];
+        samplesBuffer.set(newSamples, free); // might this be faster with uint8?
+
+        // Copy also to other end of ring buffer if appropriate
+        if (this.free2 >= SamplesBuffer.iSamples && this.free2 < SamplesBuffer.iAugmentedSamples) {
+          samplesBuffer.set(newSamples, this.free2); // might this be faster with uint8?
+          this.free2 += Settings.iSamplesInBlock;
+        }
+
+        free += Settings.iSamplesInBlock;
+        if (free >= SamplesBuffer.iSamples) {
+          this.free2 = free;
+          free = 0;
+        }
+        samplesBuffer[SamplesBuffer.freeInd] = free;
+      }
+      break;
+    case "PingAndInc":
+      //postMessage({ cmd: "PingAndInc", val: e.data.val + 1, "array": e.data.array });
+      e.data.val++;
+      postMessage(e.data);
+      break;
+    case "ComputePitch":
+      //eg when no shared memory the ring buffer will be in here.
+      //let samplesBuffer = SamplesBuffer.f32SamplesBuffer;
+      let free = samplesBuffer[SamplesBuffer.freeInd];
+
+      let iMaxWlStart = free - Settings.iMaxSampleWl * 2;
+      if (iMaxWlStart < 0) {
+        iMaxWlStart += SamplesBuffer.iSamples; //iSamplesInBlock; //this_iSamples;
+      }
+      var iWidth = Settings.iMaxSampleWl * 2; //window.iMaxSampleWl * 2;
+      //var iByteWidth = 4;//iWidth * 4; // float is 4 bytes
+      //works - var slice = this_samplesBuffer.slice(iMaxWlStart, iMaxWlStart + iWidth) ;
+      //var fInputTexBuffer = new Float32Array(slice, iMaxWlStart * 4, iWidth); // can use dataview!? also - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array/Float32Array
+      //QUESTION: Better if main asked for samples? (would save wasted posts)
+
+      var pitchSamplesBuffer = new Float32Array(samplesBuffer.buffer, iMaxWlStart * 4, iWidth); // Would like to transfer this! I think it is fast because basically just sends pointer!!??
+      let pitch = pitchComputeMethod(pitchSamplesBuffer);
+      if (Settings.ySharedMemory) {
+        samplesBuffer[SamplesBuffer.pitchInd] = pitch;
+      } else { // post to main thread
+        postMessage({ cmd: "Pitch", val: pitch });
+      }
+      break;
     case "SamplesBuffer":
       SamplesBuffer = e.data.val; //.init(e.data.val);
+      samplesBuffer = SamplesBuffer.f32SamplesBuffer;
       break;
     case "PitchMethod":
       pitchComputeMethod = e.data.val;
       break;
     case "Settings":
       Settings = e.data.val;
-      dotProduct = new Float32Array(Settings.maxSampleWl);
+      dotProduct = new Float32Array(Settings.iMaxSampleWl);
       iDotProductLength = dotProduct.length;
+      this.free2 = 0;
       break;
     case "AudioPort":
       {
         //let port = e.data.val;
-        audioPort = e.ports[0];
-        audioPort.postMessage({ cmd: "FromWorker", val: 1 });
-        //sharedWorkerPort.onmessage = event => postMessage(event.data);
-        audioPort.onmessage = function (e) {
+        audioWorkletPort = e.ports[0];
+        audioWorkletPort.postMessage({ cmd: "FromWorker", val: 1 }); // defensive
+        audioWorkletPort.onmessage = function (e) {
           //console.log("onmessage!!" + e.data);
           switch (e.data.cmd) {
             case "Samples":
-              /*if (SamplesBuffer.f32SamplesBuffer == null) {
+              {
+                let newSamples = e.data.val;
+                //let samplesBuffer = SamplesBuffer.f32SamplesBuffer;
+                let free = samplesBuffer[SamplesBuffer.freeInd];
+                samplesBuffer.set(newSamples, free); // might this be faster with uint8?
 
-          SamplesBuffer.init(1024 * 3);
-        }*/
-              let newSamples = e.data.val;
-              let samplesBuffer = SamplesBuffer.f32SamplesBuffer;
-              let free = samplesBuffer[SamplesBuffer.freeInd];
-              samplesBuffer.set(newSamples, free); // might this be faster with uint8?
+                // Copy also to other end of ring buffer if appropriate
+                if (this.free2 >= SamplesBuffer.iSamples && this.free2 < SamplesBuffer.iAugmentedSamples) {
+                  samplesBuffer.set(newSamples, this.free2); // might this be faster with uint8?
+                  this.free2 += Settings.iSamplesInBlock;
+                }
 
-              // Copy also to other end of ring buffer if appropriate
-              if (this.free2 >= SamplesBuffer.iSamples && this.free2 < SamplesBuffer.iAugmentedSamples) {
-                samplesBuffer.set(newSamples, this.free2); // might this be faster with uint8?
-                this.free2 += Settings.iSamplesInBlock;
-              }
+                free += Settings.iSamplesInBlock;
+                if (free >= SamplesBuffer.iSamples) {
+                  this.free2 = free;
+                  free = 0;
+                }
+                samplesBuffer[SamplesBuffer.freeInd] = free;
 
-              free += Settings.iSamplesInBlock;
-              if (free >= SamplesBuffer.iSamples) {
-                this.free2 = free;
-                free = 0;
-              }
-              samplesBuffer[SamplesBuffer.freeInd] = free;
-
+                /*
               //---------------------------Send pitch samples to main thread on every samples block! ----------------------------
-              let iMaxWlStart = free - Settings.maxSampleWl * 2;
+              let iMaxWlStart = free - Settings.iMaxSampleWl * 2;
               if (iMaxWlStart < 0) {
                 iMaxWlStart += SamplesBuffer.iSamples; //iSamplesInBlock; //this_iSamples;
               }
-              var iWidth = Settings.maxSampleWl * 2; //window.maxSampleWl * 2;
+              var iWidth = Settings.iMaxSampleWl * 2; //window.iMaxSampleWl * 2;
               //var iByteWidth = 4;//iWidth * 4; // float is 4 bytes
               //works - var slice = this_samplesBuffer.slice(iMaxWlStart, iMaxWlStart + iWidth) ;
               //var fInputTexBuffer = new Float32Array(slice, iMaxWlStart * 4, iWidth); // can use dataview!? also - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array/Float32Array
               //QUESTION: Better if main asked for samples? (would save wasted posts)
 
               var pitchSamplesBuffer = new Float32Array(samplesBuffer.buffer, iMaxWlStart * 4, iWidth); // Would like to transfer this! I think it is fast because basically just sends pointer!!??
-              /*if (slice[1] != 0) {
-          let fred = 0;
-        }*/
               if (Settings.iPitchMethod == Settings.PitchMethods.iYinJsWorkerMethod) {
                 let pitch = pitchComputeMethod(pitchSamplesBuffer);
                 //samplesBuffer[SamplesBuffer.pitchInd] = pitch;
@@ -184,10 +231,11 @@ onmessage = function (e) {
                 // Send samples to main thread for computation
                 postMessage(pitchSamplesBuffer); // ie we send (to main.onMessage) just enough of  most recent samples for pitch deduction! Avoids shared memory!!?
               }
+              */
+              }
               break;
             default:
               console.log("invalid cmd in soundWorker!: " + e.data.cmd);
-              
           }
         };
       }
@@ -210,7 +258,7 @@ function yinDotProduct(pitchSamplesBuffer) {
     bufferSize /= 2;
   */
   // Set up the yinBuffer as described in step one of the YIN paper.
-  //const yinBufferLength = window.maxSampleWl; //max_sample_wl_param;//bufferSize / 2;
+  //const yinBufferLength = window.iMaxSampleWl; //max_sample_wl_param;//bufferSize / 2;
   //const dotProduct = new Float32Array(yinBufferLength);
 
   // Compute the difference function as described in step 2 of the YIN paper.

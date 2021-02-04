@@ -139,13 +139,13 @@ export function testFloat(gl, i_, j_) {
     */
 
      // One each for RGBA component of a pixel
-    buffer = new Float32Array(4 * window.maxSampleWl);
+    buffer = new Float32Array(4 * window.iMaxSampleWl);
     // Read a 1x1 block of pixels, a single pixel
 
     gl.readPixels(
       0, // x-coord of lower left corner
       0, // y-coord of lower left corner
-      window.maxSampleWl, // width of the block
+      window.iMaxSampleWl, // width of the block
       1, // height of the block
       gl.RGBA, // Format of pixel data.
       gl.FLOAT, // Data type of the pixel data, must match makeTexture

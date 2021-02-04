@@ -24,7 +24,7 @@ if (window.yNoInputTexture && !window.yOES_texture_float) {
 import { shaders } from "./vizitJs/Shaders.js";
 import * as ShaderProgram from "./vizitJs/ShaderProgram.js";
 import * as Tests from "./vizitJs/Tests.js";
-//import { window.maxSampleWl } from "./sound/Sound.js";
+//import { window.iMaxSampleWl } from "./sound/Sound.js";
 
 var _1000j_Plus_i_NoInputTex = 0;
 var _1000j_Plus_i_FloatInputAndOutputTex = 1;
@@ -63,7 +63,7 @@ iOutputTexWidth = 64; //iDim;
 iOutputTexHeight = 1; //iDim;
 
 export function exec() {
-  iOutputTexWidth = window.maxSampleWl;
+  iOutputTexWidth = window.iMaxSampleWl;
   iOutputTexHeight = 1;
   switch (iTest) {
     case _1000j_Plus_i_NoInputTex:
@@ -123,12 +123,12 @@ export function exec() {
       }
       break;
     case floatInputAndOutputTexDotProduct:
-      //iTexWidth = window.maxSampleWl;
+      //iTexWidth = window.iMaxSampleWl;
       window.yNoInputTexture = false;
       window.yOES_texture_float = true;
       computeInputTexture = computeTexDotProductInputTextureSineWave;
-      //fragShaderSrc = shaders.buildShader("floatInputAndOutputTexDotProduct", window.maxSampleWl);
-      fragShaderSrc = shaders.floatInputAndOutputTexDotProduct(window.maxSampleWl);
+      //fragShaderSrc = shaders.buildShader("floatInputAndOutputTexDotProduct", window.iMaxSampleWl);
+      fragShaderSrc = shaders.floatInputAndOutputTexDotProduct(window.iMaxSampleWl);
       testRtn = Tests.testDotProducts;
       //SyDoTiming = false;
       if (initShader()) {
@@ -137,13 +137,13 @@ export function exec() {
       break;
 
     case floatInputAndOutputTexDotProduct4:
-      //iTexWidth = window.maxSampleWl;
-      iOutputTexWidth = window.maxSampleWl / 4;
+      //iTexWidth = window.iMaxSampleWl;
+      iOutputTexWidth = window.iMaxSampleWl / 4;
       window.yNoInputTexture = false;
       window.yOES_texture_float = true;
       computeInputTexture = computeTexDotProductInputTextureSineWave;
-      //fragShaderSrc = shaders.buildShader("floatInputAndOutputTexDotProduct", window.maxSampleWl);
-      fragShaderSrc = shaders.floatInputAndOutputTexDotProduct4(window.maxSampleWl);
+      //fragShaderSrc = shaders.buildShader("floatInputAndOutputTexDotProduct", window.iMaxSampleWl);
+      fragShaderSrc = shaders.floatInputAndOutputTexDotProduct4(window.iMaxSampleWl);
       testRtn = Tests.testDotProducts;
       //SyDoTiming = false;
       if (initShader()) {
@@ -152,12 +152,12 @@ export function exec() {
       break;
 
     case floatInputAndOutputTexDotProductFunction:
-      //iTexWidth = window.maxSampleWl;
+      //iTexWidth = window.iMaxSampleWl;
       window.yNoInputTexture = false;
       window.yOES_texture_float = true;
       computeInputTexture = null; //??computeTexDotProductInputTextureSineWave;
-      //fragShaderSrc = shaders.buildShader("floatInputAndOutputTexDotProduct", window.maxSampleWl);
-      fragShaderSrc = shaders.floatInputAndOutputTexDotProduct(window.maxSampleWl);
+      //fragShaderSrc = shaders.buildShader("floatInputAndOutputTexDotProduct", window.iMaxSampleWl);
+      fragShaderSrc = shaders.floatInputAndOutputTexDotProduct(window.iMaxSampleWl);
       testRtn = Tests.testDotProducts;
       yDoTiming = false;
       if (initShader()) {
@@ -165,12 +165,12 @@ export function exec() {
       }
       break;
     case floatInputAndOutputTexDotProductFunctionRgba:
-      //iTexWidth = window.maxSampleWl;
+      //iTexWidth = window.iMaxSampleWl;
       window.yNoInputTexture = false;
       window.yOES_texture_float = true;
       computeInputTexture = null; //??computeTexDotProductInputTextureSineWave;
-      //fragShaderSrc = shaders.buildShader("floatInputAndOutputTexDotProduct", window.maxSampleWl);
-      fragShaderSrc = shaders.floatInputAndOutputTexDotProduct_RGBA(window.maxSampleWl);
+      //fragShaderSrc = shaders.buildShader("floatInputAndOutputTexDotProduct", window.iMaxSampleWl);
+      fragShaderSrc = shaders.floatInputAndOutputTexDotProduct_RGBA(window.iMaxSampleWl);
       testRtn = Tests.testDotProducts;
       yDoTiming = false;
       if (initShader()) {
@@ -178,12 +178,12 @@ export function exec() {
       }
       break;
     case floatUniformInputAndTexOutputYin:
-      //iTexWidth = window.maxSampleWl;
+      //iTexWidth = window.iMaxSampleWl;
       window.yNoInputTexture = true;
       window.yOES_texture_float = true;
       computeInputTexture = null; //??computeTexDotProductInputTextureSineWave;
-      //fragShaderSrc = shaders.buildShader("floatInputAndOutputTexDotProduct", window.maxSampleWl);
-      fragShaderSrc = shaders.floatUniformInputAndTexOutputYin(window.maxSampleWl);
+      //fragShaderSrc = shaders.buildShader("floatInputAndOutputTexDotProduct", window.iMaxSampleWl);
+      fragShaderSrc = shaders.floatUniformInputAndTexOutputYin(window.iMaxSampleWl);
       testRtn = Tests.testDotProducts;
       yDoTiming = false;
       if (initShader()) {
@@ -191,13 +191,13 @@ export function exec() {
       }
       break;
     case floatInputAndOutputTexDotProductFunctionRgba2:
-       //iTexWidth = window.maxSampleWl;
-      iOutputTexWidth = yWriteToFloatTexture? window.maxSampleWl / 4 : window.maxSampleWl;
+       //iTexWidth = window.iMaxSampleWl;
+      iOutputTexWidth = yWriteToFloatTexture? window.iMaxSampleWl / 4 : window.iMaxSampleWl;
       window.yNoInputTexture = false;
       window.yOES_texture_float = true;
       computeInputTexture = null; //??computeTexDotProductInputTextureSineWave;
-      //fragShaderSrc = shaders.buildShader("floatInputAndOutputTexDotProduct", window.maxSampleWl);
-      fragShaderSrc = shaders.floatInputAndOutputTexDotProduct_RGBA3(window.maxSampleWl);
+      //fragShaderSrc = shaders.buildShader("floatInputAndOutputTexDotProduct", window.iMaxSampleWl);
+      fragShaderSrc = shaders.floatInputAndOutputTexDotProduct_RGBA3(window.iMaxSampleWl);
       testRtn = getDotProductsRGBA; //Tests.testDotProducts;
       yDoTiming = false;
       if (initShader()) {
@@ -415,7 +415,7 @@ export function computeInputTexFromFloatSamples(samplesBuffer, startindex) {
 }
 
 export function computeInputTexFromFloatSamples_RGBA(samplesBuffer, startindex) {
-  var iWidth = window.maxSampleWl * 2;
+  var iWidth = window.iMaxSampleWl * 2;
   //var iByteWidth = 4;//iWidth * 4; // float is 4 bytes
   var fInputTexBuffer = new Float32Array(samplesBuffer.buffer, startindex * 4, iWidth); // can use dataview!? also - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array/Float32Array
   //console.log("ZZ=" + fInputTexBuffer[startindex]);
@@ -445,19 +445,19 @@ export function computeInputTexFromFloatSamples_RGBA(samplesBuffer, startindex) 
 
 let fJsResults;
 export function computeInputTexFromFloatSamples_RGBA_Worker(samplesBuffer) {
-  var iWidth = window.maxSampleWl * 2;
+  var iWidth = window.iMaxSampleWl * 2;
   //var iByteWidth = 4;//iWidth * 4; // float is 4 bytes
   //var fInputTexBuffer = new Float32Array(samplesBuffer.buffer, startindex * 4, iWidth); // can use dataview!? also - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array/Float32Array
 
   /*
   if (samplesBuffer[3] != 0) {
     if (fJsResults == null) {
-      fJsResults = new Float32Array(window.maxSampleWl);
+      fJsResults = new Float32Array(window.iMaxSampleWl);
     }
     let fTotal;
-    for (let i = 0; i < window.maxSampleWl; i++) {
+    for (let i = 0; i < window.iMaxSampleWl; i++) {
       fTotal = 0;
-      for (let j = 0; j < window.maxSampleWl; j++) {
+      for (let j = 0; j < window.iMaxSampleWl; j++) {
         let fDiff = samplesBuffer[j] - samplesBuffer[j + i]; //pixelA.r - pixelB.r;
         fTotal += fDiff * fDiff;
       }
@@ -486,14 +486,14 @@ export function getDotProducts() {
 
   if (resultBuffer == null) {
     // One each for RGBA component of a pixel
-    //resultBuffer = new Float32Array(4 * window.maxSampleWl);
-    resultBuffer = new Float32Array(window.maxSampleWl);
+    //resultBuffer = new Float32Array(4 * window.iMaxSampleWl);
+    resultBuffer = new Float32Array(window.iMaxSampleWl);
   }
 
   gl.readPixels(
     0, // x-coord of lower left corner
     0, // y-coord of lower left corner
-    window.maxSampleWl, // width of the block
+    window.iMaxSampleWl, // width of the block
     1, // height of the block
     gl.RGBA, // Format of pixel data.
     gl.FLOAT, // Data type of the pixel data, must match makeTexture
@@ -508,13 +508,13 @@ export function getDotProductsRGBA() {
 
   if (resultBuffer == null) {
     // One each for RGBA component of a pixel
-    resultBuffer = new Float32Array(window.maxSampleWl);
+    resultBuffer = new Float32Array(window.iMaxSampleWl);
   }
 
   gl.readPixels(
     0, // x-coord of lower left corner
     0, // y-coord of lower left corner
-    window.maxSampleWl / 4, // width of the block
+    window.iMaxSampleWl / 4, // width of the block
     1, // height of the block
     gl.RGBA, // Format of pixel data.
     gl.FLOAT, // Data type of the pixel data, must match makeTexture
@@ -533,7 +533,7 @@ export function yin2fromTs() {
   const sampleRate = 48000;
   const probabilityThreshold = 0.1;
 
-  const yinBufferLength = window.maxSampleWl;
+  const yinBufferLength = window.iMaxSampleWl;
   /*if (yinBuffer == null) {
     yinBuffer = resultBuffernew Float32Array(yinBufferLength);
   }*/
@@ -542,7 +542,7 @@ export function yin2fromTs() {
   let tau;
 
   /*let resultBufferIndex = 0;
-  for (let i = 0; i < window.maxSampleWl; i++) {
+  for (let i = 0; i < window.iMaxSampleWl; i++) {
     yinBuffer[i] = resultBuffer[resultBufferIndex];
     resultBufferIndex += 1; //4;
   }*/
@@ -636,7 +636,7 @@ export function yin2fromC() {
   const sampleRate = 48000;
   const probabilityThreshold = 0.1;
 
-  const yinBufferLength = window.maxSampleWl;
+  const yinBufferLength = window.iMaxSampleWl;
   if (yinBuffer == null) {
     yinBuffer = new Float32Array(yinBufferLength);
   }
@@ -645,7 +645,7 @@ export function yin2fromC() {
   let tau;
 
   let resultBufferIndex = 0;
-  for (let i = 0; i < window.maxSampleWl; i++) {
+  for (let i = 0; i < window.iMaxSampleWl; i++) {
     yinBuffer[i] = resultBuffer[resultBufferIndex];
     resultBufferIndex += 1; //4;
   }

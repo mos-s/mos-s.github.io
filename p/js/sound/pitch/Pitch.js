@@ -2,10 +2,10 @@
 
 import * as gpgpu from "../../gpgpu.js";
 
-export const iYinJsMethod = 1;
+export const iYinJsMainThreadMethod = 1;
 export const iYinJsWorkerMethod = 2;
-export const iGpgpuMethod = 3;
-export const iYBitstreamMethod = 4;
+export const iYBitstreamMethod = 3;
+export const iGpgpuMethod = 4;
 
 export let computeMethod = computeWithGpgpu;
 export let dotProduct, iDotProductLength;
@@ -13,12 +13,12 @@ export let dotProduct, iDotProductLength;
 const yDoTiming = false; //true;
 
 export function init() {
-  dotProduct = new Float32Array(window.maxSampleWl);
+  dotProduct = new Float32Array(window.iMaxSampleWl);
   iDotProductLength = dotProduct.length;
   let method;
 
   switch (window.iPitchMethod) {
-    case iYinJsMethod:
+    case iYinJsMainThreadMethod:
       method = yin;
       break;
     case iYinJsWorkerMethod:
@@ -46,7 +46,7 @@ export function init() {
     window.computedAndSavedPitchMsTime = endNsTime; // needed for scheduling!
     var ellapsedItsMs = endNsTime - startNsTime;
     //if (pitch < 3000) {
-    console.log("\nellapsedItsMs = " + ellapsedItsMs);
+///    console.log("\nellapsedItsMs = " + ellapsedItsMs);
     //}
     return pitch;
   };
@@ -80,7 +80,7 @@ function yinDotProduct(pitchSamplesBuffer) {
     bufferSize /= 2;
   */
   // Set up the yinBuffer as described in step one of the YIN paper.
-  //const yinBufferLength = window.maxSampleWl; //max_sample_wl_param;//bufferSize / 2;
+  //const yinBufferLength = window.iMaxSampleWl; //max_sample_wl_param;//bufferSize / 2;
   //const dotProduct = new Float32Array(yinBufferLength);
 
   // Compute the difference function as described in step 2 of the YIN paper.

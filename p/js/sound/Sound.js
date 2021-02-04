@@ -8,7 +8,7 @@ import * as ShaderProgram from "../vizitJs/ShaderProgram.js";
 import * as Pitch from "./pitch/Pitch.js";
 let pitchMethod;
 //import * as Settings from "./Settings.js"; // must be first or at least before Sound.js!
-//import {ySharedMemory, yAudioWorklet, iSamplesInBlock, maxSampleWl, yWriteToFloatTexture, iPitchMethod} from "./Settings.js"; // must be first or at least before Sound.js!
+//import {ySharedMemory, yAudioWorklet, iSamplesInBlock, iMaxSampleWl, yWriteToFloatTexture, iPitchMethod} from "./Settings.js"; // must be first or at least before Sound.js!
 import { Settings } from "./Settings.js"; // must be first or at least before Sound.js! ??
 window.settings = Settings;
 import * as SamplesBuffer from "./SamplesBuffer.js";
@@ -19,7 +19,7 @@ window.samplesBuffer = SamplesBuffer.create();
 const yDoTiming = true;
 let yInsideRtn = false;
 
-//export const window.maxSampleWl = 512; //600 - should b f(samplerate)
+//export const window.iMaxSampleWl = 512; //600 - should b f(samplerate)
 //export const iSamplesInBlock = 512; //128; //512; //256; //128;
 let this_samplesBuffer;
 let ringBuffer;
@@ -33,7 +33,9 @@ let yOscillatorOn = false;
 export let pitchSamplesBuffer; // Filled from either shared array buffer or slice returned from soundWorker!
 
 var audioContext = null;
-var soundProcessorNode;
+//var currentSoundProcessor;
+//var currentSoundProcessor; // ie audio script processor (when audioWorklet not available)
+var soundProcessor; // ie audioWorklet or currentSoundProcessor!
 var soundWorker, pitchWorker;
 var canvasContext;
 var iCtr = 0;
@@ -69,9 +71,9 @@ export class SoundObject extends Object {
       let inputs = new Float32Array(e.inputBuffer.getChannelData(0));
       if (this_samplesBuffer == undefined) {
         this_iSamples = iSamplesInBlock * SAMPLE_BLOCKS;
-        this.iBlocksContainingTwoMaxWaves = Math.ceil((window.maxSampleWl * 2) / iSamplesInBlock);
-        //if (this.iBlocksContainingMaxSampleWl > SAMPLE_BLOCKS) {
-        // window.alert("iBlocksContainingMaxSampleWl > SAMPLE_BLOCKS not allowed!");
+        this.iBlocksContainingTwoMaxWaves = Math.ceil((window.iMaxSampleWl * 2) / iSamplesInBlock);
+        //if (this.iBlocksContainingiMaxSampleWl > SAMPLE_BLOCKS) {
+        // window.alert("iBlocksContainingiMaxSampleWl > SAMPLE_BLOCKS not allowed!");
         // }
         this.iActualBufferLength = this_iSamples + iSamplesInBlock * this.iBlocksContainingTwoMaxWaves;
         this_samplesBuffer = new Float32Array(this.iActualBufferLength);
@@ -102,13 +104,13 @@ export class SoundObject extends Object {
       }
 
       // copy to tex
-      let iMaxWlStart = free - window.maxSampleWl * 2;
+      let iMaxWlStart = free - window.iMaxSampleWl * 2;
       if (iMaxWlStart < 0) {
         iMaxWlStart += this_iSamples;
       } else {
         yEnoughData = true;
       }
-      //  this_pitch = yin(this_samplesBuffer, window.maxSampleWl, iMaxWlStart);
+      //  this_pitch = yin(this_samplesBuffer, window.iMaxSampleWl, iMaxWlStart);
       if (yEnoughData) {
         //if (inputTex == null) {
         //inputTex = gpgpu.computeInputTexFromFloatSamples(this_samplesBuffer, iMaxWlStart);
@@ -145,7 +147,7 @@ export class SoundObject extends Object {
 
   deduceLatestPitch() {
     if (free) {
-      let iMaxWlStart = free - window.maxSampleWl * 2;
+      let iMaxWlStart = free - window.iMaxSampleWl * 2;
       if (iMaxWlStart < 0) {
         iMaxWlStart += this_iSamples;
       }
@@ -153,7 +155,7 @@ export class SoundObject extends Object {
       if (iMaxWlStart >= 0) {
         //check if called in here again!!??
         // if (iCtr2 & 1) {
-        this.pitch = yin(this_samplesBuffer, window.maxSampleWl, iMaxWlStart);
+        this.pitch = yin(this_samplesBuffer, window.iMaxSampleWl, iMaxWlStart);
         console.log("pitch = " + this.pitch);
         console.log("\niMaxWlStart = " + iMaxWlStart);
         return this.pitch;
@@ -166,165 +168,87 @@ export class SoundObject extends Object {
 */
   async setUpSoundProcessor(callback) {
     //mediaStream, pitchMethod_) {
-    // ie audioWorklet or scriptProcessor?
+    // ie AudioWorklet or ScriptProcessor?
     pitchMethod = Pitch.init();
 
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
     //setCapabilities();
-    SamplesBuffer.init(1024 * 3);
+    //SamplesBuffer.init(1024 * 3);
 
     //Set up soundWorker and pitchWorker from main thread. Also set up message channel BETWEEN them! Also beween audioWorker and soundWorker (possible?)
     //Audio from mic into ring buffer:
     let msg = typeof AudioWorkletNode !== "undefined" ? "true" : "false";
     alert("AudioWorkletNode defined = " + msg);
+
+    // ============== Set up soundWorker - a dedicated Web Worker ==============
+    soundWorker = new Worker("js/sound/soundWorker.js", { type: "module" });
+    soundWorker.postMessage({ cmd: "Settings", val: Settings });
+    soundWorker.postMessage({ cmd: "SamplesBuffer", val: window.samplesBuffer });
+    let pingAndIncStartNsTime;
+    let arrayToPost = new Float32Array(1024 * 1);
+    for (var i = 0; i < arrayToPost.length; i++) {
+      arrayToPost[i] = i;
+    }
+   
+    soundWorker.onmessage = function (e) {
+      // This is for response to "ComputePitch" cmd.
+      switch (e.data.cmd) {
+        case "Pitch":
+          //if (Settings.iPitchMethod == Settings.PitchMethods.iYinJsWorkerMethod) {
+          SamplesBuffer.f32SamplesBuffer[SamplesBuffer.pitchInd] = e.data.val;
+          //} else {
+          //  pitchSamplesBuffer = e.data.val; // this should/could be a transfer!?
+          //}
+          break;
+        case "PingAndInc":
+          let i = e.data.val;
+          if (i == 1) {
+            pingAndIncStartNsTime = performance.now();
+          }
+          if (i <= 1001) {
+            soundWorker.postMessage({ cmd: "PingAndInc", val: i + 1, array: arrayToPost });
+          } else {
+            var endNsTime = performance.now();
+            var ellapsedItsMs = endNsTime - pingAndIncStartNsTime;
+            console.log("\nPingAndInc ellapsedItsMs for " + arrayToPost.length + " float array = " + ellapsedItsMs);
+            // On lenovo a basic post took around 0.5ms and with 512 float array not noticeabley longer! and with 10k float array about 0.7 and a million float around 10 ms.
+          }
+          break;
+        default:
+          alert("Illegal cmd in soundWorker.onmessage: " + e.data.cmd);
+      }
+    };
+
+    //soundWorker.postMessage({ cmd: "PingAndInc", val: 0, "array": arrayToPost }); // postMessage timing
+
+    // ============== Set up soundProcessor - ie AudioWorkletNode or ScriptProcessor ==============
     if (window.yAudioWorklet) {
       try {
-        await audioContext.audioWorklet.addModule("js/sound/mos-audio-worklet-processor.js");
-        soundProcessorNode = new window.AudioWorkletNode(audioContext, "mos-audio-worklet-processor");
-        //pitchWorker = new Worker("js/sound/pitch/pitchWorker.js", { type: "module" });
-        //pitchWorker.postMessage({ command: "sab", value: window.sab });
-        //let thiz = this;
-        /*pitchWorker.onmessage = function (e) {
-          thiz.pitch = e.data;
-          console.log("pitch = " + thiz.pitch); // + "\n");
-        };*/
-
-        //soundProcessorNode.port.postMessage({ command: "sab", value: window.sab });
-        //soundProcessorNode.postMessage({cmd: "Settings", val: Settings});
-        //soundProcessorNode.postMessage({cmd: "SamplesBuffer", val: window.samplesBuffer});
-
-        soundProcessorNode.port.postMessage({ cmd: "Settings", val: Settings });
-        soundProcessorNode.port.postMessage({ cmd: "SamplesBuffer", val: window.samplesBuffer });
-        //soundProcessorNode.port.postMessage({ cmd: "soundWorker", val: 1 }); //problem!
-        soundProcessorNode.port.onmessage = function (e) {
-          if (Settings.iPitchMethodOverride == Settings.PitchMethods.iYinJsWorkerMethod) {
-            SamplesBuffer.f32SamplesBuffer[SamplesBuffer.pitchInd] = e.data;
-          } else {
-            pitchSamplesBuffer = e.data; // this should/could be a transfer!?
-          }
+        await audioContext.audioWorklet.addModule("js/sound/mos-audio-worklet.js");
+        soundProcessor = new window.AudioWorkletNode(audioContext, "mos-audio-worklet");
+        if (window.ySharedMemory) {
+          //AudioWorklet will write directly to Settings.f32buffer which is shared memory so will need Settings and SamplesBuffer.
+          soundProcessor.port.postMessage({ cmd: "Settings", val: Settings });
+          soundProcessor.port.postMessage({ cmd: "SamplesBuffer", val: window.samplesBuffer });
+        } else {
+          //audioWorklet will post to soundWorker
+          soundWorker.postMessage({ cmd: "AudioPort", val: 1 }, [soundProcessor.port]); // after which audioWorklet postMessage will go to soundWorker!
         }
-        //soundWorker = new SharedWorker("js/sound/sharedSoundWorker.js", { type: "module" });
-        soundWorker = new Worker("js/sound/soundWorker.js", { type: "module" });
-        let fred = soundWorker.port;
-
-        soundWorker.postMessage({ cmd: "Settings", val: Settings });
-        soundWorker.postMessage({ cmd: "SamplesBuffer", val: window.samplesBuffer });
-
-
-        soundWorker.onmessage = function (e) {
-          if (Settings.iPitchMethodOverride == Settings.PitchMethods.iYinJsWorkerMethod) {
-            SamplesBuffer.f32SamplesBuffer[SamplesBuffer.pitchInd] = e.data;
-          } else {
-            pitchSamplesBuffer = e.data; // this should/could be a transfer!?
-          }
-        }
-
-        soundWorker.postMessage({ cmd: "AudioPort", val: 1 }, [soundProcessorNode.port]); // after which audioWorklet postMessage will go to soundWorker!
-///        soundProcessorNode.port.postMessage({ cmd: "WorkerPort", val: 1 }, [soundWorker.port]);
-        //soundProcessorNode.port.postMessage({ cmd: "SendMessage", val: 1 });
-        //soundWorker.postMessage([soundProcessorNode.port]);
-        let urls = 1;
-        /*soundWorker.postMessage(
-          {
-            urls,
-          },
-          [soundProcessorNode.port]
-        );*/
-
-        let martha = 0;
-
       } catch (e) {
-        alert("Problem inside js/sound/mos-audio-worklet-processor.js !: " + e);
+        alert("Problem inside js/sound/mos-audio-worklet.js !: " + e); // this catch should only contain audioWorklet Node creation!!?
       }
-    } else {
-      // no audio worker
-      console.log("window.iSamplesInBlock = " + window.iSamplesInBlock);
-      soundProcessorNode = audioContext.createScriptProcessor(window.iSamplesInBlock, 2, 2);
+    } else {  
+      // AudioWorklet not available so make a ScriptProcessor (which runs in this thread).
+      soundProcessor = audioContext.createScriptProcessor(window.iSamplesInBlock, 2, 2);
       // let soundProcessorNode2 = audioContext.createScriptProcessor(4 * 1024, 2, 2);
       if (window.ySharedMemory) {
       } else {
-        soundWorker = new Worker("js/sound/soundWorker.js", { type: "module" });
-        //soundWorker = new Worker("js/sound/pitch/pitchWorker.js", { type: "module" });
-        soundWorker.onmessage = function (e) {
-          if (Settings.iPitchMethodOverride == Settings.iYinJsWorkerMethod) {
-            SamplesBuffer.f32SamplesBuffer[SamplesBuffer.pitchInd] = e.data;
-          } else {
-            pitchSamplesBuffer = e.data; // this should/could be a transfer!?
-          }
-        };
-        soundWorker.postMessage({ cmd: "Settings", val: Settings });
-        soundWorker.postMessage({ cmd: "SamplesBuffer", val: window.samplesBuffer });
-        //soundWorker.postMessage({cmd: "PitchMethod", val: {"pitchMethod": pitchMethod}});
       }
       this.setUpScriptProcessor(); //mediaStream, pitchMethod_);
-
-      //pitchWorker = new Worker("js/sound/pitch/pitchWorker.js", { type: "module" });
-      //pitchWorker.postMessage({ command: "sab", value: window.sab });
     }
   }
-  /*
-    try {
-      audioContext = new AudioContext();
-      await audioContext.resume();
-      await audioContext.audioWorklet.addModule("module-url/module.js");
-    } catch(e) {
-      return null;
-      */
-  /*  if (ySharedMemory) {
-        //audioworker (in own thread) writes samples into ring buffer (shared memory).
-      } else {
-        //audioworker (in own thread) posts sampleBlock to soundWorker (a simple webworker) which writes into ring buffer
-      }
-    } else {
-      //(eg IOS)
-      //scriptProcessor (in main thread - no choice) posts sampleBlock to soundWorker (a simple webworker) which writes into ring buffer (not shared!!)
-    }*/
-  /*Pitch request:
-    Try to compute pitch as late as poss so that ready just before render (ie requestAnimation)!
-    if ySharedMemory then
-      Main thread requests (postMessage) pitch from pitchWorker from requestAnimation. pitchWorker schedules when to do computation so that will be ready just before following render!
-    else
-      Main thread requests (postMessage) pitch from pitchWorker from requestAnimation. pitchWorker schedules when to do computation so that will be ready just before following render!
-  Pitch deduction:
-    if ySharedMemory then pitchWorker gets latest samples from shared ring buffer, deduce pitch and writes to shared memory
-    else pitchWorker requests latest samples from soundWorker with postMessage. When received (ie onMessage) deduce pitch and post to main thread.
 
-First attempt can assume audioWorker but no shared memory! then will work also for ios already.
-*/
-  // }
-  /*
-  async setUpSoundProcessorOld(mediaStream, pitchMethod_) {
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    // Create a source from our MediaStream
-
-    window.iSampleRate = audioContext.sampleRate;
-    const yIos = false; //true;
-    if (yIos) {
-      soundProcessorNode = audioContext.createScriptProcessor(iSamplesInBlock, 2, 2);
-      this.setUpScriptProcessor(mediaStream, pitchMethod_);
-    } else {
-      //await audioContext.audioWorklet.addModule("recorder-worklet-processor.js");//.then(() => {
-      //await audioContext.audioWorklet.addModule('js/sound/recorder-worklet-processor.js');
-      await audioContext.audioWorklet.addModule("js/sound/mos-audio-worklet-processor.js"); //.then(() => {
-      // your code here
-      soundProcessorNode = new window.AudioWorkletNode(audioContext, "mos-audio-worklet-processor");
-      if (typeof AudioWorkletNode !== "undefined") {
-        //soundProcessorNode.onmessage = function (e) {
-        //  //SoundObject.prototype.setWaveBuffer(e.data)
-        //  //sab = e.data.sab;
-        //};
-        //var sab = new SharedArrayBuffer(1024);
-        //SamplesBuffer.init(1024 * 3);
-        //worker.postMessage(sab);
-        //postMessage;
-      }
-
-      //  this.setUpAudioWorkletProcessor(mediaStream, pitchMethod_)
-      //});
-    }
-  }
-*/
   setUpAudioWorkletProcessor(mediaStream, pitchMethod_) {
     var fred = 0;
   }
@@ -339,37 +263,58 @@ First attempt can assume audioWorker but no shared memory! then will work also f
     let newPlaybackTime;
     let prevTimeStamp = 0;
     let newTimeStamp;
+    let samplesBuffer = SamplesBuffer.f32SamplesBuffer;;
     const yUseWorker = true;
     if (yUseWorker) {
-      soundProcessorNode.onaudioprocess = function (e) {
-        if (soundWorker != null) {
-          //let i = e.inputBuffer.getChannelData(0)
-          //soundWorker.postMessage(i); // For now for simplicity we post to worker even if sound received by audioWorker rather than script processor
-          soundWorker.postMessage({ cmd: "Samples", val: e.inputBuffer.getChannelData(0) });
+      soundProcessor.free2 = 0;
+      soundProcessor.onaudioprocess = function (e) {
+        if (window.ySharedMemory) {
+          let newSamples = e.inputBuffer.getChannelData(0);
+          //let samplesBuffer = SamplesBuffer.f32SamplesBuffer;
+          let free = samplesBuffer[SamplesBuffer.freeInd];
+          samplesBuffer.set(newSamples, free); // might this be faster with uint8?
 
-          // if (e.inputBuffer.duration != 0.010666666666666666) {
-          //   let fred = 0;
-          // }
-          const yLogSampleBlockTimes = false;
-          if (yLogSampleBlockTimes) {
-            newCurrentTime = e.currentTarget.context.currentTime;
-            console.log("DcurrentTime: " + (newCurrentTime - prevCurrentTime));
-            prevCurrentTime = newCurrentTime;
-
-            newPlaybackTime = e.playbackTime;
-            console.log("DPlaybackTime: " + (newPlaybackTime - prevPlaybackTime));
-            prevPlaybackTime = newPlaybackTime;
-
-            console.log("playBackTime - currentTime: " + (newPlaybackTime - newCurrentTime));
-
-            newTimeStamp = e.timeStamp;
-            console.log("DtimeStamp: " + (newTimeStamp - prevTimeStamp));
-            prevTimeStamp = newTimeStamp;
+          // Copy also to other end of ring buffer if appropriate
+          if (this.free2 >= SamplesBuffer.iSamples && this.free2 < SamplesBuffer.iAugmentedSamples) {
+            samplesBuffer.set(newSamples, this.free2); // might this be faster with uint8?
+            this.free2 += Settings.iSamplesInBlock;
           }
+
+          free += Settings.iSamplesInBlock;
+          if (free >= SamplesBuffer.iSamples) {
+            this.free2 = free;
+            free = 0;
+          }
+          samplesBuffer[SamplesBuffer.freeInd] = free;
+        } else {
+          if (soundWorker != null) {
+            soundWorker.postMessage({ cmd: "Samples", val: e.inputBuffer.getChannelData(0) });
+          }
+        }
+
+        // if (e.inputBuffer.duration != 0.010666666666666666) {
+        //   let fred = 0;
+        // }
+        const yLogSampleBlockTimes = false;
+        if (yLogSampleBlockTimes) {
+          newCurrentTime = e.currentTarget.context.currentTime;
+          console.log("DcurrentTime: " + (newCurrentTime - prevCurrentTime));
+          prevCurrentTime = newCurrentTime;
+
+          newPlaybackTime = e.playbackTime;
+          console.log("DPlaybackTime: " + (newPlaybackTime - prevPlaybackTime));
+          prevPlaybackTime = newPlaybackTime;
+
+          console.log("playBackTime - currentTime: " + (newPlaybackTime - newCurrentTime));
+
+          newTimeStamp = e.timeStamp;
+          console.log("DtimeStamp: " + (newTimeStamp - prevTimeStamp));
+          prevTimeStamp = newTimeStamp;
         }
       };
     } else {
-      soundProcessorNode.onaudioprocess = this.processWaveInToDate;
+      // Currently we require Worker to be available. Should abort with message here?
+      soundProcessor.onaudioprocess = this.processWaveInToDate;
     }
 
     // scriptNode.onaudioprocess = function (e) {
@@ -405,9 +350,9 @@ First attempt can assume audioWorker but no shared memory! then will work also f
         var inputs = e.inputBuffer.getChannelData(0); //.buffer; //.buffer;??
         if (this_samplesBuffer == undefined) {
           this_iSamples = iSamplesInBlock * SAMPLE_BLOCKS;
-          this.iBlocksContainingTwoMaxWaves = Math.ceil((window.maxSampleWl * 2) / iSamplesInBlock);
-          //if (this.iBlocksContainingMaxSampleWl > SAMPLE_BLOCKS) {
-          // window.alert("iBlocksContainingMaxSampleWl > SAMPLE_BLOCKS not allowed!");
+          this.iBlocksContainingTwoMaxWaves = Math.ceil((window.iMaxSampleWl * 2) / iSamplesInBlock);
+          //if (this.iBlocksContainingiMaxSampleWl > SAMPLE_BLOCKS) {
+          // window.alert("iBlocksContainingiMaxSampleWl > SAMPLE_BLOCKS not allowed!");
           // }
           this.iActualBufferLength = this_iSamples + iSamplesInBlock * this.iBlocksContainingTwoMaxWaves;
           this_samplesBuffer = new Float32Array(this.iActualBufferLength);
@@ -480,8 +425,8 @@ First attempt can assume audioWorker but no shared memory! then will work also f
         source = audioContext.createMediaStreamSource(window.stream); // ie mic (don't need to start)
       }
       yOscillatorOn = true;
-      source.connect(soundProcessorNode);
-      soundProcessorNode.connect(audioContext.destination);
+      source.connect(soundProcessor);
+      soundProcessor.connect(audioContext.destination); //!???
     }
 
     function movedivOld(timestamp) {
@@ -511,6 +456,14 @@ First attempt can assume audioWorker but no shared memory! then will work also f
 } // end of class
 var prevNsTime = 0;
 export function computeLatestPitch() {
+  if (soundWorker) {
+    soundWorker.postMessage({ cmd: "ComputePitch" });
+  } else {
+    // currentSoundProcessor.port.postMessage({ cmd: "ComputePitch" });
+  }
+}
+
+export function computeLatestPitchOld() {
   // if and when webgl is accessible from webworker(maybe already in (firefox) we could do all of this inside pitchWorker - also see - https://gpuweb.github.io/gpuweb/
   // Whole of pitch deduction here takes about 4 or 5ms on lenovo.
   //var startNsTime = performance.now();
@@ -518,11 +471,11 @@ export function computeLatestPitch() {
   if (window.ySharedMemory) {
     samplesBuffer = SamplesBuffer.f32SamplesBuffer;
     let free = samplesBuffer[SamplesBuffer.freeInd];
-    let iMaxWlStart = free - window.maxSampleWl * 2;
+    let iMaxWlStart = free - window.iMaxSampleWl * 2;
     if (iMaxWlStart < 0) {
       iMaxWlStart += SamplesBuffer.iSamples;
     }
-    pitchSamplesBuffer = new Float32Array(samplesBuffer.buffer, iMaxWlStart * 4, window.maxSampleWl * 2); // start index is in bytes but not length
+    pitchSamplesBuffer = new Float32Array(samplesBuffer.buffer, iMaxWlStart * 4, window.iMaxSampleWl * 2); // start index is in bytes but not length
   } else {
     samplesBuffer = SamplesBuffer.f32SamplesBuffer;
   }

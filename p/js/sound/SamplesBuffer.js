@@ -9,10 +9,10 @@ NOTES
 
 */
 //import * as Settings from "./Settings.js"; // must be first or at least before Sound.js!
-//import {ySharedMemory, yAudioWorklet, iSamplesInBlock, maxSampleWl, yWriteToFloatTexture, iPitchMethod} from "./Settings.js"; // must be first or at least before Sound.js!
+//import {ySharedMemory, yAudioWorklet, iSamplesInBlock, iMaxSampleWl, yWriteToFloatTexture, iPitchMethod} from "./Settings.js"; // must be first or at least before Sound.js!
 import {Settings} from "./Settings.js";
 
-//import { iSamplesInBlock, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffer, SamplesBuffer, window.maxSampleWl } from "sound/Sound.js";
+//import { iSamplesInBlock, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffer, SamplesBuffer, window.iMaxSampleWl } from "sound/Sound.js";
 //import { SAMPLE_BLOCKS} from "./Sound.js";
 ///import * as Settings from "../SettingsOld.js";
 //let Settings;
@@ -26,12 +26,12 @@ export let freeInd, toProcessInd, pitchInd;
 const iNumberVars = 3; // Increment this if add var!!!
 
 export let iSamples, iAugmentedSamples; // do not change after init!
-export let iWrapAvoidSamples; // = Math.ceil((window.maxSampleWl * 2) / iSamplesInBlock) * iSamplesInBlock;
+export let iWrapAvoidSamples; // = Math.ceil((window.iMaxSampleWl * 2) / iSamplesInBlock) * iSamplesInBlock;
 
 export function init(iSamplesOrSharedArrayBuffer) {
   //We call this from any module which imports this module!
   // Typically from main thread once with no of samples and eg workers with existing shared array buffer.
-  iWrapAvoidSamples = Math.ceil((Settings.maxSampleWl * 2) / Settings.iSamplesInBlock) * Settings.iSamplesInBlock;
+  iWrapAvoidSamples = Math.ceil((Settings.iMaxSampleWl * 2) / Settings.iSamplesInBlock) * Settings.iSamplesInBlock;
 
   /*if (typeof(window) == "undefined") { //if (window == null) {
     window = {};

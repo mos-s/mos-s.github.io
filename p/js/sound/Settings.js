@@ -1,15 +1,27 @@
 "use strict";
 /*
 DESCRIPTION
-  Typical use in a file : import {Settings} from "./Settings.js"; 
+  Typical use:
+    In Sound.js:
+      import {Settings} from "./Settings.js"; // must be first or at least before Sound.js! ??
+      window.settings = Settings;
+    In SamplesBuffer.js which is imported by other threads (audioWorklet, soundWorker):
+      import {Settings} from "./Settings.js";
+    In soundWorker.js:
+       Settings is posted from Sound.js (ie main thread where it is initialised with init())
+       Note that COULD import it as for SamplesBuffer, but would only only currently work in chrome .. eg firefox has not implemented modules in workers as yet.
+     
+
+
+    thread in a file : import {Settings} from "./Settings.js"; 
   For use in worker eg: worker.postMessage({cmd: "Settings", val: Settings});
 
 IMPROVEMENTS
     
 */
-import {iYinJsMethod, iGpgpuMethod, iYinJsWorkerMethod} from "./pitch/Pitch.js";
+import {iYinJsMainThreadMethod, iYinJsWorkerMethod, iGpgpuMethod} from "./pitch/Pitch.js";
 export let PitchMethods = {};
-PitchMethods.iYinJsMethod = iYinJsMethod;
+PitchMethods.iYinJsMainThreadMethod = iYinJsMainThreadMethod;
 PitchMethods.iGpgpuMethod = iGpgpuMethod;
 PitchMethods.iYinJsWorkerMethod = iYinJsWorkerMethod;
 
@@ -23,11 +35,11 @@ export let Settings;
 
 // overrides
 //const yAudioWorkletOverride = false;
-const ySharedMemoryOverride = false;
+//const ySharedMemoryOverride = false;
 const iScriptProcessorSamplesInBlockOverride = 1024;// 1024  seems to almost completely eliminate dropped sample blocks on lenovo.
 //const maxWlOverride = 256;
 //const yWriteToFloatTextureOverride = false;
-const iPitchMethodOverride = iYinJsMethod;//iYinJsWorkerMethod;//iYinJsMethod;
+const iPitchMethodOverride = iYinJsWorkerMethod;//iYinJsWorkerMethod;//iYinJsMainThreadMethod;
 
 // default values
 const iScriptProcessorDefaultSamplesInBlock = 512;
@@ -36,9 +48,8 @@ const yWriteToFloatTextureDefault = true; // Not true of IOS! Should test this l
 const iPitchMethodDefault = iGpgpuMethod;
 
 // 'global values'!
-let ySharedMemory, yAudioWorklet;
-let iSamplesInBlock, maxSampleWl;
-let yWriteToFloatTexture;
+let ySharedMemory, yAudioWorklet, yWriteToFloatTexture; // ie capabilities!
+let iSamplesInBlock, iMaxSampleWl;
 let iPitchMethod;
 
 initVars();
@@ -49,7 +60,7 @@ if (typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScop
   window.ySharedMemory = ySharedMemory;
   window.yAudioWorklet = yAudioWorklet;
   window.iSamplesInBlock = iSamplesInBlock;
-  window.maxSampleWl = maxSampleWl;
+  window.iMaxSampleWl = iMaxSampleWl;
   window.yWriteToFloatTexture = yWriteToFloatTexture;
   window.iPitchMethod = iPitchMethod;
   window.PitchMethods = PitchMethods;
@@ -69,13 +80,13 @@ function initVars() {
     : iScriptProcessorDefaultSamplesInBlock;
   //iSamplesInBlock = (typeof iScriptProcessorSamplesInBlockOverride !== "undefined") ? iScriptProcessorSamplesInBlockOverride : yAudioWorklet?typeof AudioWorkletNode !== "undefined";
 
-  maxSampleWl = typeof maxWlOverride !== "undefined" ? maxWlOverride : maxWlDefault;
+  iMaxSampleWl = typeof maxWlOverride !== "undefined" ? maxWlOverride : maxWlDefault;
 
   yWriteToFloatTexture = typeof yWriteToFloatTextureOverride !== "undefined" ? yWriteToFloatTextureOverride : yWriteToFloatTextureDefault;
 
   iPitchMethod = typeof iPitchMethodOverride !== "undefined" ? iPitchMethodOverride : iPitchMethodDefault;
 
-  Settings = { ySharedMemory, yAudioWorklet, iSamplesInBlock, maxSampleWl, yWriteToFloatTexture, iPitchMethod, PitchMethods};
+  Settings = { ySharedMemory, yAudioWorklet, iSamplesInBlock, iMaxSampleWl, yWriteToFloatTexture, iPitchMethod, PitchMethods};
   var fred = 0;
 }
 
@@ -85,7 +96,7 @@ function initVars() {
   o.ySharedMemory = ySharedMemory;
   o.yAudioWorklet = yAudioWorklet;
   o.iSamplesInBlock = iSamplesInBlock;
-  o.maxSampleWl = maxSampleWl;
+  o.iMaxSampleWl = iMaxSampleWl;
   o.yWriteToFloatTexture = yWriteToFloatTexture;
   o.iPitchMethod = iPitchMethod;
   return o;
