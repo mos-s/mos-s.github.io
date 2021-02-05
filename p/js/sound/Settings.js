@@ -36,9 +36,9 @@ export let Settings; // this is what is used in other files (and posted to other
 //export const iYinMethod = 1;
 
 // overrides
-const yAudioWorkletOverride = false; // this and SharedMemoryOverride = false simulates IOS (and Mac OS?)
-const ySharedMemoryOverride = false; // eg simulate current firefox
-const yTransferSampleBlocksOverride = true; // ie transfer them
+//const yAudioWorkletOverride = false; // this and SharedMemoryOverride = false simulates IOS (and Mac OS?)
+//const ySharedMemoryOverride = false; // eg simulate current firefox
+//const yTransferSampleBlocksOverride = true; // ie transfer them
 const iScriptProcessorSamplesInBlockOverride = 1024; // 1024  seems to almost completely eliminate dropped sample blocks on lenovo.
 //const maxWlOverride = 256;
 //const yWriteToFloatTextureOverride = false;
@@ -86,8 +86,8 @@ function initVars() {
 
   iPitchMethod = typeof iPitchMethodOverride !== "undefined" ? iPitchMethodOverride : iPitchMethodDefault;
 
-  Settings = { ySharedMemory, yAudioWorklet, yTransferSampleBlocks, iSamplesInBlock, iMaxSampleWl, yWriteToFloatTexture, iPitchMethod, PitchMethods};
-  
+  Settings = { ySharedMemory, yAudioWorklet, yTransferSampleBlocks, iSamplesInBlock, iMaxSampleWl, yWriteToFloatTexture, iPitchMethod, PitchMethods };
+
   // --------------------- Do any url param overrides -------------------
   /*for (var key in Settings) {
     let value = Settings[key];
@@ -106,23 +106,26 @@ function initVars() {
     Settings.iMaxSampleWl = parseInt(urlParams.iMaxSampleWl);
   }
   if (urlParams.iSamplesInBlock) {
-    Settings.iSamplesInBlock = parseInt(urlParams.iSamplesInBlock);
+    if (Settings.yAudioWorklet) {
+      alert("Can not override iSamplesInBlock when yAudioWorklet=true");
+    } else {
+      Settings.iSamplesInBlock = parseInt(urlParams.iSamplesInBlock);
+    }
   }
   if (urlParams.IOS) {
     Settings.ySharedMemory = false;
     Settings.yAudioWorklet = false;
   }
-    
 }
 
 function getUrlVars() {
   var vars = {};
-  var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
-      vars[key] = value;
+  var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function (m, key, value) {
+    vars[key] = value;
   });
   return vars;
 }
- /*function getUrlParam(parameter, defaultvalue){
+/*function getUrlParam(parameter, defaultvalue){
   var urlparameter = defaultvalue;
   if(window.location.href.indexOf(parameter) > -1){
       urlparameter = getUrlVars()[parameter];
@@ -161,6 +164,4 @@ export function usefulSettingsAlert() {
   // would like something like yWriteToOutputFloatTexture!
 
   alert(s);
- }
-
- 
+}
