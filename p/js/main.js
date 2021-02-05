@@ -101,7 +101,7 @@ function init(stream) {
     yDoTiming = true;
   }
 
-  window.usefulAlert();
+  window.usefulSettingsAlert();
   soundObject = new SoundObject();
   if (soundObject.setUpSoundProcessor(stream, yin)) {
     makeButtons();
@@ -138,8 +138,8 @@ function makeButtons() {
   setEltVisible(playButton, false);
 
   const waveOnOffButton = document.getElementById("waveOnOffButton");
-  setEltVisible(waveOnOffButton, window.ySharedMemory, "inline");
-  if (window.ySharedMemory) {
+  setEltVisible(waveOnOffButton, window.Settings.ySharedMemory, "inline");
+  if (window.Settings.ySharedMemory) {
     function waveOnOffButtonHandler() {
       yDisplayWave = !yDisplayWave;
       setEltVisible(document.getElementById("waveform"), yDisplayWave);

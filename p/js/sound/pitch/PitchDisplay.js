@@ -55,7 +55,7 @@ export function displayWave() {
 
   var samplesBuffer, freeInd;
   // We assume here that window.iMaxSampleWl * 2 is at least width of wave display
-  if (window.ySharedMemory) {
+  if (window.Settings.ySharedMemory) {
     samplesBuffer = window.samplesBuffer.f32SamplesBuffer;
     freeInd = samplesBuffer[window.samplesBuffer.freeInd];
   } else {

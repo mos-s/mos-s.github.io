@@ -62,110 +62,6 @@ export class SoundObject extends Object {
     canvasContext = context;
   }
 
-  /*
-  processWaveInToDate(e) {
-    if (this.yInside) {
-      fred = 0;
-    } else {
-      this.inside = true;
-      let inputs = new Float32Array(e.inputBuffer.getChannelData(0));
-      if (this_samplesBuffer == undefined) {
-        this_iSamples = iSamplesInBlock * SAMPLE_BLOCKS;
-        this.iBlocksContainingTwoMaxWaves = Math.ceil((window.iMaxSampleWl * 2) / iSamplesInBlock);
-        //if (this.iBlocksContainingiMaxSampleWl > SAMPLE_BLOCKS) {
-        // window.alert("iBlocksContainingiMaxSampleWl > SAMPLE_BLOCKS not allowed!");
-        // }
-        this.iActualBufferLength = this_iSamples + iSamplesInBlock * this.iBlocksContainingTwoMaxWaves;
-        this_samplesBuffer = new Float32Array(this.iActualBufferLength);
-        this.iBlock = 0;
-        this.toProcess = 0;
-        free = 0;
-        this.free2 = 0;
-        yEnoughData = false;
-      }
-      //this_samplesBuffer.subarray(this.free, (this.free + 128)).set(inputs[0][0]);
-      //this_samplesBuffer.set(inputs[0][0], this.free); // might this be faster with uint8?
-      this_samplesBuffer.set(inputs, free); // might this be faster with uint8?
-
-      // Copy also to other end of ring buffer is appropriate
-      //if (this.free2 >= this_iSamples && this.free2 <= this.iActualBufferLength) {
-      if (this.free2 >= this_iSamples && this.free2 < this.iActualBufferLength) {
-        //this_samplesBuffer.set(inputs[0][0], this.free2); // might this be faster with uint8?
-        this_samplesBuffer.set(inputs, this.free2); // might this be faster with uint8?
-        this.free2 += iSamplesInBlock;
-      } else {
-        // this_samplesBuffer.set(inputs, this.free); // balance timing for testing (ie just repeat first copy above!)
-      }
-
-      free += iSamplesInBlock;
-      if (free >= this_iSamples) {
-        this.free2 = free;
-        free = 0;
-      }
-
-      // copy to tex
-      let iMaxWlStart = free - window.iMaxSampleWl * 2;
-      if (iMaxWlStart < 0) {
-        iMaxWlStart += this_iSamples;
-      } else {
-        yEnoughData = true;
-      }
-      //  this_pitch = yin(this_samplesBuffer, window.iMaxSampleWl, iMaxWlStart);
-      if (yEnoughData) {
-        //if (inputTex == null) {
-        //inputTex = gpgpu.computeInputTexFromFloatSamples(this_samplesBuffer, iMaxWlStart);
-        //       inputTex = gpgpu.computeInputTexFromFloatSamples_RGBA(this_samplesBuffer, iMaxWlStart);
-        //console.log("ZZ=" + this_samplesBuffer[iMaxWlStart]);
-        //}
-        //gpgpu.getDotProducts(); // ie readpixels = should not be any wait (unless nore than samplesblock interval) for computation to finish
-        function doStuff() {
-          inputTex = gpgpu.computeInputTexFromFloatSamples_RGBA(this_samplesBuffer, iMaxWlStart);
-
-          gpgpu.getDotProductsRGBA(); // ie readpixels = should not be any wait (unless nore than samplesblock interval) for computation to finish
-
-          gpgpu.execShader2(inputTex); // just calls Shader.run!
-
-          let pitch = gpgpu.yin2();
-          console.log("\npitch = " + pitch);
-        }
-        var yDoTiming = true;
-        if (yDoTiming) {
-          var startNsTime = performance.now();
-          var iIts = 1000;
-          for (var i = 0; i < iIts; i++) {
-            doStuff();
-          }
-          var ellapsedItsMs = performance.now() - startNsTime;
-          alert("ellapsedItsMs = " + ellapsedItsMs);
-        } else {
-          doStuff();
-        }
-      }
-      this.inside = false;
-    }
-  }
-
-  deduceLatestPitch() {
-    if (free) {
-      let iMaxWlStart = free - window.iMaxSampleWl * 2;
-      if (iMaxWlStart < 0) {
-        iMaxWlStart += this_iSamples;
-      }
-
-      if (iMaxWlStart >= 0) {
-        //check if called in here again!!??
-        // if (iCtr2 & 1) {
-        this.pitch = yin(this_samplesBuffer, window.iMaxSampleWl, iMaxWlStart);
-        console.log("pitch = " + this.pitch);
-        console.log("\niMaxWlStart = " + iMaxWlStart);
-        return this.pitch;
-        //} else {
-        //  var fred = 0;
-        //}
-      }
-    }
-  }
-*/
   async setUpSoundProcessor(callback) {
     //mediaStream, pitchMethod_) {
     // ie AudioWorklet or ScriptProcessor?
@@ -252,7 +148,7 @@ export class SoundObject extends Object {
       }
     }
     // ============== Set up soundProcessor - ie AudioWorkletNode or ScriptProcessor ==============
-    if (window.yAudioWorklet) {
+    if (window.Settings.yAudioWorklet) {
       try {
         if (window.isSecureContext) {
           let fred = 0;
@@ -263,7 +159,7 @@ export class SoundObject extends Object {
         //});
         //audioContext.resume(); // firefox?
         soundProcessor = new window.AudioWorkletNode(audioContext, "mos-audio-worklet");
-        if (window.ySharedMemory) {
+        if (window.Settings.ySharedMemory) {
           //AudioWorklet will write directly to Settings.f32buffer which is shared memory so will need Settings and SamplesBuffer.
           soundProcessor.port.postMessage({ cmd: "Settings", val: Settings });
           soundProcessor.port.postMessage({ cmd: "SamplesBuffer", val: window.samplesBuffer });
@@ -279,9 +175,9 @@ export class SoundObject extends Object {
       }
     } else {
       // AudioWorklet not available so make a ScriptProcessor (which runs in this thread).
-      soundProcessor = audioContext.createScriptProcessor(window.iSamplesInBlock, 2, 2);
+      soundProcessor = audioContext.createScriptProcessor(window.Settings.iSamplesInBlock, 2, 2);
       // let soundProcessorNode2 = audioContext.createScriptProcessor(4 * 1024, 2, 2);
-      if (window.ySharedMemory) {
+      if (window.Settings.ySharedMemory) {
       } else {
       }
       this.setUpScriptProcessor(); //mediaStream, pitchMethod_);
@@ -308,7 +204,7 @@ export class SoundObject extends Object {
     soundProcessor.free2 = 0;
     soundProcessor.onaudioprocess = function (e) {
       let newSamples = e.inputBuffer.getChannelData(0);
-      if (window.ySharedMemory) {
+      if (window.Settings.ySharedMemory) {
         //let samplesBuffer = SamplesBuffer.f32SamplesBuffer;
         let free = samplesBuffer[SamplesBuffer.freeInd];
         samplesBuffer.set(newSamples, free); // might this be faster with uint8?
@@ -327,8 +223,8 @@ export class SoundObject extends Object {
         samplesBuffer[SamplesBuffer.freeInd] = free;
       } else {
         //if (soundWorker != null) {
-          soundWorker.postMessage({ cmd: "Samples", val: newSamples });
-          /*if (Settings.yTransferSampleBlocks) {
+        soundWorker.postMessage({ cmd: "Samples", val: newSamples });
+        /*if (Settings.yTransferSampleBlocks) {
             soundWorker.postMessage(newSamples.buffer, [newSamples.buffer]); // Produces - "Sound.js:332 "Uncaught DOMException: Failed to execute 'postMessage' on 'Worker': ArrayBuffer at index 0 is already detached."
           } else {
             soundWorker.postMessage({ cmd: "Samples", val: newSamples });
@@ -357,6 +253,7 @@ export class SoundObject extends Object {
         prevTimeStamp = newTimeStamp;
       }
     };
+  } // end of setUpScriptProcessor
 
     // scriptNode.onaudioprocess = function (e) {
     /*
@@ -382,51 +279,6 @@ export class SoundObject extends Object {
       }
 */
 
-    //thiz.processWaveInToDate(leftChannel);
-    /*
-      if (this.yInside) {
-        fred = 0;
-      } else {
-        this.inside = true;
-        var inputs = e.inputBuffer.getChannelData(0); //.buffer; //.buffer;??
-        if (this_samplesBuffer == undefined) {
-          this_iSamples = iSamplesInBlock * SAMPLE_BLOCKS;
-          this.iBlocksContainingTwoMaxWaves = Math.ceil((window.iMaxSampleWl * 2) / iSamplesInBlock);
-          //if (this.iBlocksContainingiMaxSampleWl > SAMPLE_BLOCKS) {
-          // window.alert("iBlocksContainingiMaxSampleWl > SAMPLE_BLOCKS not allowed!");
-          // }
-          this.iActualBufferLength = this_iSamples + iSamplesInBlock * this.iBlocksContainingTwoMaxWaves;
-          this_samplesBuffer = new Float32Array(this.iActualBufferLength);
-          this.iBlock = 0;
-          this.toProcess = 0;
-          this.free = 0;
-          this.free2 = 0;
-        }
-        //this_samplesBuffer.subarray(this.free, (this.free + 128)).set(inputs[0][0]);
-        //this_samplesBuffer.set(inputs[0][0], this.free); // might this be faster with uint8?
-        this_samplesBuffer.set(inputs, this.free); // might this be faster with uint8?
-
-        // Copy also to other end of ring buffer is appropriate
-        //if (this.free2 >= this_iSamples && this.free2 <= this.iActualBufferLength) {
-        if (this.free2 >= this_iSamples && this.free2 < this.iActualBufferLength) {
-          //this_samplesBuffer.set(inputs[0][0], this.free2); // might this be faster with uint8?
-          this_samplesBuffer.set(inputs, this.free2); // might this be faster with uint8?
-          this.free2 += iSamplesInBlock;
-        } else {
-          this_samplesBuffer.set(inputs, this.free); // balance timing for testing (ie just repeat first copy above!)
-        }
-
-        this.free += iSamplesInBlock;
-        if (this.free >= this_iSamples) {
-          this.free2 = this.free;
-          this.free = 0;
-        }
-        this.inside = false;
-      }
-    };
-  } // end of onaudioprocess
-*/
-  }
   computeSineWaveF32(iSamples, fAmplitude) {
     var radius = 0.5;
     var iWaves = 4;
@@ -494,40 +346,10 @@ export class SoundObject extends Object {
     //waveBuffer = new Float32Array(waveBufferParam);
     inputTex = gpgpu.computeInputTexFromFloatSamples_RGBA_Worker(waveBufferParam);
   }
-} // end of class
-var prevNsTime = 0;
+} // end of Sound class
+
 export function computeLatestPitch() {
- // if (soundWorker) {
-    soundWorker.postMessage({ cmd: "ComputePitch" });
- // } else {
- //   // currentSoundProcessor.port.postMessage({ cmd: "ComputePitch" });
-  //}
-}
-
-export function computeLatestPitchOld() {
-  // if and when webgl is accessible from webworker(maybe already in (firefox) we could do all of this inside pitchWorker - also see - https://gpuweb.github.io/gpuweb/
-  // Whole of pitch deduction here takes about 4 or 5ms on lenovo.
-  //var startNsTime = performance.now();
-  let samplesBuffer;
-  if (window.ySharedMemory) {
-    samplesBuffer = SamplesBuffer.f32SamplesBuffer;
-    let free = samplesBuffer[SamplesBuffer.freeInd];
-    let iMaxWlStart = free - window.iMaxSampleWl * 2;
-    if (iMaxWlStart < 0) {
-      iMaxWlStart += SamplesBuffer.iSamples;
-    }
-    pitchSamplesBuffer = new Float32Array(samplesBuffer.buffer, iMaxWlStart * 4, window.iMaxSampleWl * 2); // start index is in bytes but not length
-  } else {
-    samplesBuffer = SamplesBuffer.f32SamplesBuffer;
-  }
-  if (pitchSamplesBuffer != null) {
-    let pitch = Pitch.computeMethod(pitchSamplesBuffer);
-    SamplesBuffer.f32SamplesBuffer[SamplesBuffer.pitchInd] = pitch; // maybe should be in caller?
-  }
-
-  if (pitchWorker) {
-    //  pitchWorker.postMessage({ command: "p" });
-  }
+  soundWorker.postMessage({ cmd: "ComputePitch" });
 }
 
 export function getLatestPitch() {

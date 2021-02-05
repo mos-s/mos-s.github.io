@@ -7,16 +7,20 @@ DESCRIPTION
       window.settings = Settings;
     In SamplesBuffer.js which is imported by other threads (audioWorklet, soundWorker):
       import {Settings} from "./Settings.js";
-    In soundWorker.js:
+    In soundWorker.js and mos-audio-worklet.js:
        Settings is posted from Sound.js (ie main thread where it is initialised with init())
        Note that COULD import it as for SamplesBuffer, but would only only currently work in chrome .. eg firefox has not implemented modules in workers as yet.
-     
+
+OVERRIDES
+  Can comment in/out code overrides.
+  Can override with URL params eg ySharedMemory=false etc 
+  UrlParam overrides override code overrides.
+  UrlParam IOS=whatever overrides all!
 
 
-    thread in a file : import {Settings} from "./Settings.js"; 
-  For use in worker eg: worker.postMessage({cmd: "Settings", val: Settings});
 
 IMPROVEMENTS
+  Should prevent override which will cause failure ... eg yAudioWorklet when AudioWorklet is undefined etc!
     
 */
 import { iYinJsMainThreadMethod, iYinJsWorkerMethod, iGpgpuMethod } from "./pitch/Pitch.js";
@@ -25,7 +29,7 @@ PitchMethods.iYinJsMainThreadMethod = iYinJsMainThreadMethod;
 PitchMethods.iGpgpuMethod = iGpgpuMethod;
 PitchMethods.iYinJsWorkerMethod = iYinJsWorkerMethod;
 
-export let Settings;
+export let Settings; // this is what is used in other files (and posted to other threads!)
 
 // pitch methods
 //export const iGpgpuMethod = 0;
@@ -47,7 +51,7 @@ const maxWlDefault = 512;
 const yWriteToFloatTextureDefault = true; // Not true of IOS! Should test this like in https://stackoverflow.com/questions/28827511/webgl-ios-render-to-floating-point-texture
 const iPitchMethodDefault = iGpgpuMethod;
 
-// 'global values'!
+// 'global unchanging (after init) values'!
 let ySharedMemory, yAudioWorklet, yWriteToFloatTexture; // ie capabilities!
 let yTransferSampleBlocks;
 let iSamplesInBlock, iMaxSampleWl;
@@ -58,22 +62,13 @@ if (typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScop
   console.log("I am in a web worker");
 } else {
   console.log("I am NOT in a web worker");
-  window.ySharedMemory = ySharedMemory;
-  window.yAudioWorklet = yAudioWorklet;
-  window.yTransferSampleBlocks = yTransferSampleBlocks;
-  window.iSamplesInBlock = iSamplesInBlock;
-  window.iMaxSampleWl = iMaxSampleWl;
-  window.yWriteToFloatTexture = yWriteToFloatTexture;
-  window.iPitchMethod = iPitchMethod;
-  window.PitchMethods = PitchMethods;
-  window.usefulAlert = usefulAlert;
+  window.Settings = Settings;
+  window.usefulSettingsAlert = usefulSettingsAlert; // We can't include this in Settings as we are posting Settings to other threads! (ie with different environments)
 }
 
 function initVars() {
-  //ySharedMemoryOverride != null ? (ySharedMemory = ySharedMemoryOverride) : typeof SharedArrayBuffer !== "undefined";
   ySharedMemory = typeof ySharedMemoryOverride !== "undefined" ? ySharedMemoryOverride : typeof SharedArrayBuffer !== "undefined";
 
-  //yAudioWorkletOverride != null ? (yAudioWorklet = yAudioWorkletOverride) : typeof AudioWorkletNode !== "undefined";
   yAudioWorklet = typeof yAudioWorkletOverride !== "undefined" ? yAudioWorkletOverride : typeof AudioWorkletNode !== "undefined";
 
   yTransferSampleBlocks = typeof yTransferSampleBlocksOverride !== "undefined" ? yTransferSampleBlocksOverride : yTransferSampleBlocksDefault;
@@ -91,59 +86,81 @@ function initVars() {
 
   iPitchMethod = typeof iPitchMethodOverride !== "undefined" ? iPitchMethodOverride : iPitchMethodDefault;
 
-  Settings = { ySharedMemory, yAudioWorklet, yTransferSampleBlocks, iSamplesInBlock, iMaxSampleWl, yWriteToFloatTexture, iPitchMethod, PitchMethods };
-  var fred = 0;
+  Settings = { ySharedMemory, yAudioWorklet, yTransferSampleBlocks, iSamplesInBlock, iMaxSampleWl, yWriteToFloatTexture, iPitchMethod, PitchMethods};
+  
+  // --------------------- Do any url param overrides -------------------
+  /*for (var key in Settings) {
+    let value = Settings[key];
+    Settings[key] = getUrlParam(key, value);
+    let fred = 0;
+    Settings.ySharedMemory = getUrlParam(key, Settings.ySharedMemory);
+  }*/
+  let urlParams = getUrlVars();
+  if (urlParams.ySharedMemory) {
+    Settings.ySharedMemory = Boolean(urlParams.ySharedMemory);
+  }
+  if (urlParams.yAudioWorklet) {
+    Settings.yAudioWorklet = Boolean(urlParams.yAudioWorklet);
+  }
+  if (urlParams.iMaxSampleWl) {
+    Settings.iMaxSampleWl = parseInt(urlParams.iMaxSampleWl);
+  }
+  if (urlParams.iSamplesInBlock) {
+    Settings.iSamplesInBlock = parseInt(urlParams.iSamplesInBlock);
+  }
+  if (urlParams.IOS) {
+    Settings.ySharedMemory = false;
+    Settings.yAudioWorklet = false;
+  }
+    
 }
 
-/*export function create() {
-  initVars();
-  let o = {};
-  o.ySharedMemory = ySharedMemory;
-  o.yAudioWorklet = yAudioWorklet;
-  o.iSamplesInBlock = iSamplesInBlock;
-  o.iMaxSampleWl = iMaxSampleWl;
-  o.yWriteToFloatTexture = yWriteToFloatTexture;
-  o.iPitchMethod = iPitchMethod;
-  return o;
+function getUrlVars() {
+  var vars = {};
+  var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
+      vars[key] = value;
+  });
+  return vars;
+}
+ /*function getUrlParam(parameter, defaultvalue){
+  var urlparameter = defaultvalue;
+  if(window.location.href.indexOf(parameter) > -1){
+      urlparameter = getUrlVars()[parameter];
+      }
+  return urlparameter;
 }*/
-export function usefulAlert() {
+
+export function usefulSettingsAlert() {
   // let msg = `
   //   "AudioWorkletNode defined = " + (typeof AudioWorkletNode !== "undefined" ? "true" : "false")
   //   `
-  let s1 =
+  let s =
     "AudioWorkletNode defined: " +
     (typeof AudioWorkletNode !== "undefined" ? "true" : "false") +
     "\n" +
     "yAudioWorklet: " +
-    yAudioWorklet +
+    Settings.yAudioWorklet +
     "\n" +
     "SharedArrayBuffer defined: " +
     (typeof SharedArrayBuffer !== "undefined" ? "true" : "false") +
     "\n" +
     "ySharedMemory: " +
-    ySharedMemory +
+    Settings.ySharedMemory +
     "\n" +
     "yTransferSampleBlocks: " +
-    yTransferSampleBlocks +
+    Settings.yTransferSampleBlocks +
     "\n" +
     "yWriteToFloatTexture: " +
-    yWriteToFloatTexture +
+    Settings.yWriteToFloatTexture +
     "\n" +
     "iSamplesInBlock: " +
-    iSamplesInBlock +
+    Settings.iSamplesInBlock +
     "\n" +
     "iMaxSampleWl: " +
-    iMaxSampleWl;
+    Settings.iMaxSampleWl;
   // would like something like yWriteToOutputFloatTexture!
 
-  alert(s1);
-  /*
-  window.ySharedMemory = ySharedMemory;
-  window.yAudioWorklet = yAudioWorklet;
-  window.iSamplesInBlock = iSamplesInBlock;
-  window.iMaxSampleWl = iMaxSampleWl;
-  window.yWriteToFloatTexture = yWriteToFloatTexture;
-  window.iPitchMethod = iPitchMethod;
-  window.PitchMethods = PitchMethods;
-*/
-}
+  alert(s);
+ }
+
+ 
