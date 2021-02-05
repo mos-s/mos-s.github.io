@@ -230,10 +230,11 @@ export class SoundObject extends Object {
         if (window.isSecureContext) {
           let fred = 0;
         }
-        //await audioContext.audioWorklet.addModule("js/sound/mos-audio-worklet.js");
-        await audioContext.audioWorklet.addModule("js/sound/mos-audio-worklet.js", {
-          credentials: 'omit',
-        });
+        await audioContext.audioWorklet.addModule("js/sound/mos-audio-worklet.js");
+        //await audioContext.audioWorklet.addModule("js/sound/mos-audio-worklet.js", {
+        //  credentials: 'omit',
+        //});
+        audioContext.resume(); // firefox?
         soundProcessor = new window.AudioWorkletNode(audioContext, "mos-audio-worklet");
         if (window.ySharedMemory) {
           //AudioWorklet will write directly to Settings.f32buffer which is shared memory so will need Settings and SamplesBuffer.
@@ -241,6 +242,8 @@ export class SoundObject extends Object {
           soundProcessor.port.postMessage({ cmd: "SamplesBuffer", val: window.samplesBuffer });
         } else {
           //audioWorklet will post to soundWorker
+          soundProcessor.port.postMessage({ cmd: "Settings", val: Settings });
+          soundProcessor.port.postMessage({ cmd: "SamplesBuffer", val: window.samplesBuffer });
           soundWorker.postMessage({ cmd: "AudioPort", val: 1 }, [soundProcessor.port]); // after which audioWorklet postMessage will go to soundWorker!
         }
       } catch (e) {

@@ -97,7 +97,7 @@ class MosAudioWorkletProcessor extends AudioWorkletProcessor {
           break;
 
         default:
-          alert("Illegal cmd in mos-audio-worklet");
+          console.log("Illegal cmd in mos-audio-worklet: " + e.data.cmd);
         //SamplesBuffer.init(event.data.value);
       }
     };
@@ -274,7 +274,7 @@ class MosAudioWorkletProcessor extends AudioWorkletProcessor {
           }
           break;
         default:
-          alert("Illegal samplesBufferMethod in mos-audio-worklet!");
+          console.log("Illegal samplesBufferMethod in mos-audio-worklet: " + samplesBufferMethod);
       }
       //}
     }
