@@ -180,6 +180,7 @@ export class SoundObject extends Object {
     //Audio from mic into ring buffer:
     let msg = typeof AudioWorkletNode !== "undefined" ? "true" : "false";
     alert("AudioWorkletNode defined = " + msg);
+    //let ySecureContext = window.isSecureContext;
 
     // ============== Set up soundWorker - a dedicated Web Worker ==============
     soundWorker = new Worker("js/sound/soundWorker.js", { type: "module" });
@@ -224,8 +225,15 @@ export class SoundObject extends Object {
 
     // ============== Set up soundProcessor - ie AudioWorkletNode or ScriptProcessor ==============
     if (window.yAudioWorklet) {
+      
       try {
-        await audioContext.audioWorklet.addModule("js/sound/mos-audio-worklet.js");
+        if (window.isSecureContext) {
+          let fred = 0;
+        }
+        //await audioContext.audioWorklet.addModule("js/sound/mos-audio-worklet.js");
+        await audioContext.audioWorklet.addModule("js/sound/mos-audio-worklet.js", {
+          credentials: 'omit',
+        });
         soundProcessor = new window.AudioWorkletNode(audioContext, "mos-audio-worklet");
         if (window.ySharedMemory) {
           //AudioWorklet will write directly to Settings.f32buffer which is shared memory so will need Settings and SamplesBuffer.

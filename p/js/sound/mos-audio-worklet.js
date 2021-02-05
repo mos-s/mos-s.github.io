@@ -193,13 +193,14 @@ class MosAudioWorkletProcessor extends AudioWorkletProcessor {
           //this.pfSamples.set(newSamples);
 
           //this._heapInputBuffer.getChannelData(0).set(newSamples); //this could put new samples in correct place in circular malloced wasm buffer!?
-          let fred = this._heapInputBuffer.getChannelData(0);
+/* 
+         let fred = this._heapInputBuffer.getChannelData(0);
           fred.set(newSamples);
 
           this._kernel.process(this._heapInputBuffer.getHeapAddress(), this._heapOutputBuffer.getHeapAddress(), 1);
 
           outputs[0][0].set(this._heapOutputBuffer.getChannelData(0));
-
+*/
           break;
         case JS_WRITE_TO_SHARED_ARRAY_BUFFER:
           {
