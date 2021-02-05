@@ -11,7 +11,7 @@
     <script defer src="./js/main.js?version=e" type="module"></script>
     <script type="module" src="./js/sound/Settings.js"></script>
     <script type="module" src="./js/sound/Sound.js"></script>
-    <script type="module" src="./js/sound/mos-audio-worklet.js"></script>
+    <!--script type="module" src="./js/sound/mos-audio-worklet.js"></script--><!-- Loaded in code by addModule -->
     <script type="module" src="./js/sound/soundWorker.js"></script>
     <script type="module" src="./js/sound/SamplesBuffer.js"></script>
     <script type="module" src="./js/sound/pitch/Pitch.js"></script>
@@ -33,7 +33,7 @@
   <body>
     
     <div>
-      <h3>Pitch - version: 20 --      <button id="playButton" type="button">Start</button></h3> 
+      <h3>Pitch - version: 20 --      <button id="playButton" type="button" hidden>Start</button>&nbsp;&nbsp;<button id="waveOnOffButton" type="button" hidden>Wave On/Off</button></h3> 
     </div>
     <!--p>Count numbers: <output id="result"></output></p>
     <button id="startWorker">Start Worker</button>

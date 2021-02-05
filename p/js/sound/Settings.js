@@ -19,13 +19,11 @@ DESCRIPTION
 IMPROVEMENTS
     
 */
-import {iYinJsMainThreadMethod, iYinJsWorkerMethod, iGpgpuMethod} from "./pitch/Pitch.js";
+import { iYinJsMainThreadMethod, iYinJsWorkerMethod, iGpgpuMethod } from "./pitch/Pitch.js";
 export let PitchMethods = {};
 PitchMethods.iYinJsMainThreadMethod = iYinJsMainThreadMethod;
 PitchMethods.iGpgpuMethod = iGpgpuMethod;
 PitchMethods.iYinJsWorkerMethod = iYinJsWorkerMethod;
-
-
 
 export let Settings;
 
@@ -34,14 +32,16 @@ export let Settings;
 //export const iYinMethod = 1;
 
 // overrides
-//const yAudioWorkletOverride = false;
-const ySharedMemoryOverride = false;
-const iScriptProcessorSamplesInBlockOverride = 1024;// 1024  seems to almost completely eliminate dropped sample blocks on lenovo.
+const yAudioWorkletOverride = false; // this and SharedMemoryOverride = false simulates IOS (and Mac OS?)
+const ySharedMemoryOverride = false; // eg simulate current firefox
+const yTransferSampleBlocksOverride = true; // ie transfer them
+const iScriptProcessorSamplesInBlockOverride = 1024; // 1024  seems to almost completely eliminate dropped sample blocks on lenovo.
 //const maxWlOverride = 256;
 //const yWriteToFloatTextureOverride = false;
-const iPitchMethodOverride = iYinJsWorkerMethod;//iYinJsWorkerMethod;//iYinJsMainThreadMethod;
+const iPitchMethodOverride = iYinJsWorkerMethod; //iYinJsWorkerMethod;//iYinJsMainThreadMethod;
 
 // default values
+const yTransferSampleBlocksDefault = false; // ie currently copy them
 const iScriptProcessorDefaultSamplesInBlock = 512;
 const maxWlDefault = 512;
 const yWriteToFloatTextureDefault = true; // Not true of IOS! Should test this like in https://stackoverflow.com/questions/28827511/webgl-ios-render-to-floating-point-texture
@@ -49,6 +49,7 @@ const iPitchMethodDefault = iGpgpuMethod;
 
 // 'global values'!
 let ySharedMemory, yAudioWorklet, yWriteToFloatTexture; // ie capabilities!
+let yTransferSampleBlocks;
 let iSamplesInBlock, iMaxSampleWl;
 let iPitchMethod;
 
@@ -59,11 +60,13 @@ if (typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScop
   console.log("I am NOT in a web worker");
   window.ySharedMemory = ySharedMemory;
   window.yAudioWorklet = yAudioWorklet;
+  window.yTransferSampleBlocks = yTransferSampleBlocks;
   window.iSamplesInBlock = iSamplesInBlock;
   window.iMaxSampleWl = iMaxSampleWl;
   window.yWriteToFloatTexture = yWriteToFloatTexture;
   window.iPitchMethod = iPitchMethod;
   window.PitchMethods = PitchMethods;
+  window.usefulAlert = usefulAlert;
 }
 
 function initVars() {
@@ -72,6 +75,8 @@ function initVars() {
 
   //yAudioWorkletOverride != null ? (yAudioWorklet = yAudioWorkletOverride) : typeof AudioWorkletNode !== "undefined";
   yAudioWorklet = typeof yAudioWorkletOverride !== "undefined" ? yAudioWorkletOverride : typeof AudioWorkletNode !== "undefined";
+
+  yTransferSampleBlocks = typeof yTransferSampleBlocksOverride !== "undefined" ? yTransferSampleBlocksOverride : yTransferSampleBlocksDefault;
 
   iSamplesInBlock = yAudioWorklet
     ? 128
@@ -86,7 +91,7 @@ function initVars() {
 
   iPitchMethod = typeof iPitchMethodOverride !== "undefined" ? iPitchMethodOverride : iPitchMethodDefault;
 
-  Settings = { ySharedMemory, yAudioWorklet, iSamplesInBlock, iMaxSampleWl, yWriteToFloatTexture, iPitchMethod, PitchMethods};
+  Settings = { ySharedMemory, yAudioWorklet, yTransferSampleBlocks, iSamplesInBlock, iMaxSampleWl, yWriteToFloatTexture, iPitchMethod, PitchMethods };
   var fred = 0;
 }
 
@@ -101,3 +106,44 @@ function initVars() {
   o.iPitchMethod = iPitchMethod;
   return o;
 }*/
+export function usefulAlert() {
+  // let msg = `
+  //   "AudioWorkletNode defined = " + (typeof AudioWorkletNode !== "undefined" ? "true" : "false")
+  //   `
+  let s1 =
+    "AudioWorkletNode defined: " +
+    (typeof AudioWorkletNode !== "undefined" ? "true" : "false") +
+    "\n" +
+    "yAudioWorklet: " +
+    yAudioWorklet +
+    "\n" +
+    "SharedArrayBuffer defined: " +
+    (typeof SharedArrayBuffer !== "undefined" ? "true" : "false") +
+    "\n" +
+    "ySharedMemory: " +
+    ySharedMemory +
+    "\n" +
+    "yTransferSampleBlocks: " +
+    yTransferSampleBlocks +
+    "\n" +
+    "yWriteToFloatTexture: " +
+    yWriteToFloatTexture +
+    "\n" +
+    "iSamplesInBlock: " +
+    iSamplesInBlock +
+    "\n" +
+    "iMaxSampleWl: " +
+    iMaxSampleWl;
+  // would like something like yWriteToOutputFloatTexture!
+
+  alert(s1);
+  /*
+  window.ySharedMemory = ySharedMemory;
+  window.yAudioWorklet = yAudioWorklet;
+  window.iSamplesInBlock = iSamplesInBlock;
+  window.iMaxSampleWl = iMaxSampleWl;
+  window.yWriteToFloatTexture = yWriteToFloatTexture;
+  window.iPitchMethod = iPitchMethod;
+  window.PitchMethods = PitchMethods;
+*/
+}

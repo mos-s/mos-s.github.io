@@ -1,128 +1,24 @@
-//import {  window.iMaxSampleWl } from "./Sound.js";
-
-//const { pitchSamplesBuffer } = require("./Sound");
-//const {computeMethod} = require("./pitch/Pitch.js");
-//import * as SamplesBuffer from "./SamplesBufferOld.js";
 let Settings, SamplesBuffer, pitchComputeMethod; // initialised by postMessage from Sound.js
 pitchComputeMethod = yin; // for now
 let samplesBuffer;
-//import * as Settings from "../SettingsOld.js";
-//SamplesBuffer.init(1024 * 3); // causes "uncaught ref to window!"
-/*var i = 0;
-
-function timedCount() {
-  i = i + 1;
-  postMessage(i);
-  setTimeout("timedCount()", 500);
-}
-
-timedCount();
-*/
-//import { iSamplesInBlock, SAMPLE_BLOCKS, window.iMaxSampleWl } from "./js/sound/Sound.js";
-//import * as gpgpu from "../gpgpu.js";
-//import { yin } from "./js/sound/pitch/yin.js";
-/*
-const window.iMaxSampleWl = 512; //600 - should b f(samplerate)
-const iSamplesInBlock = 512; //256; //128;
-const SAMPLE_BLOCKS = 16;
-
-let this_iSamples, this_samplesBuffer, this_iBlocksContainingTwoMaxWaves, this_iActualBufferLength, this_iBlock, this_pitch;
-let free, this_free2;
-let yInside = false;
-let yEnoughData = false;
-*/
-/*
-onmessage = function (e) {
-  //processWaveInToDate_1;
-  postMessage(123);
-};
-
-onmessage = function(e) {
-    //processWaveInToDate_1;
-      postMessage(123);
-    }
-*/
-//let yDoDelay = false;
-//let iCtr = 0;
-/*
-onmessage = function (e) {
-  //processWaveInToDate_1;
-  //postMessage(123);
-  iCtr++;
-  if (yInside) {
-    var fred = 0;
-    yInside = false;
-  } else {
-    yInside = true;
-    //let inputs = new Float32Array(e.inputBuffer.getChannelData(0));
-    let inputs = e.data;
-    if (this_samplesBuffer == undefined) {
-      this_iSamples = iSamplesInBlock * SAMPLE_BLOCKS;
-      this.iBlocksContainingTwoMaxWaves = Math.ceil((window.iMaxSampleWl * 2) / iSamplesInBlock);
-      //if (this.iBlocksContainingiMaxSampleWl > SAMPLE_BLOCKS) {
-      // window.alert("iBlocksContainingiMaxSampleWl > SAMPLE_BLOCKS not allowed!");
-      // }
-      this.iActualBufferLength = this_iSamples + iSamplesInBlock * this.iBlocksContainingTwoMaxWaves;
-      this_samplesBuffer = new Float32Array(this.iActualBufferLength);
-      this.iBlock = 0;
-      this.toProcess = 0;
-      free = 0;
-      this.free2 = 0;
-      yEnoughData = false;
-    }
-    //this_samplesBuffer.subarray(this.free, (this.free + 128)).set(inputs[0][0]);
-    //this_samplesBuffer.set(inputs[0][0], this.free); // might this be faster with uint8?
-    this_samplesBuffer.set(inputs, free); // might this be faster with uint8?
-
-    // Copy also to other end of ring buffer is appropriate
-    //if (this.free2 >= this_iSamples && this.free2 <= this.iActualBufferLength) {
-    if (this.free2 >= this_iSamples && this.free2 < this.iActualBufferLength) {
-      //this_samplesBuffer.set(inputs[0][0], this.free2); // might this be faster with uint8?
-      this_samplesBuffer.set(inputs, this.free2); // might this be faster with uint8?
-      this.free2 += iSamplesInBlock;
-    } else {
-      // this_samplesBuffer.set(inputs, this.free); // balance timing for testing (ie just repeat first copy above!)
-    }
-
-    free += iSamplesInBlock;
-    if (free >= this_iSamples) {
-      this.free2 = free;
-      free = 0;
-    }
-
-    if (yDoDelay) {
-      for (var i = 0; i < 10000; i++) {
-        console.log(i);
-      }
-      yDoDelay = false;
-    }
-
-   
-    let iMaxWlStart = free - window.iMaxSampleWl * 2;
-    if (iMaxWlStart < 0) {
-      iMaxWlStart += this_iSamples;
-    }
-    var iWidth = 512 * 2;//window.iMaxSampleWl * 2;
-    //var iByteWidth = 4;//iWidth * 4; // float is 4 bytes
-    //works - var slice = this_samplesBuffer.slice(iMaxWlStart, iMaxWlStart + iWidth) ;
-    //var fInputTexBuffer = new Float32Array(slice, iMaxWlStart * 4, iWidth); // can use dataview!? also - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array/Float32Array
-    //QUESTION: Better if main asked for samples? (would save wasted posts)
-    
-    var slice = new Float32Array(slice, iMaxWlStart * 4, iWidth); // Would like to transfer this! I think it is fast because basically just sends pointer!!??
-
-    postMessage(slice);// ie we send (to main.onMessage) just enough of  most recent samples for pitch deduction! Avoids shared memory!!?
-    yInside = false;
-  }
-};
-*/
 let dotProduct, iDotProductLength;
 let audioWorkletPort;
+
+let arrayToPost = new Float32Array(1024 * 200);
+
 onmessage = function (e) {
+  // if (typeof e.data.cmd == "undefined") {
+  //   let fred = 0;
+  // }
+  let undefined;
   switch (e.data.cmd) {
+    case undefined:
+      // This currently conflicts with PingAmdInc transfer measuring below!!?
+      let transferredSamples = new Float32Array(e.data);
     case "Samples":
       // Put this in a function because duplicated below!?
       {
-        let newSamples = e.data.val;
+        let newSamples = e.data.val || transferredSamples;
         //let samplesBuffer = SamplesBuffer.f32SamplesBuffer;
         let free = samplesBuffer[SamplesBuffer.freeInd];
         samplesBuffer.set(newSamples, free); // might this be faster with uint8?
@@ -141,10 +37,34 @@ onmessage = function (e) {
         samplesBuffer[SamplesBuffer.freeInd] = free;
       }
       break;
+
+    /*case undefined:
+      //before using (ie uncommenting) this we currently need to comment out conflicting case undefined above!
+      {
+        // ie transfer!
+        let transferredArray = e.data;
+        let arrayToPostz = new Float32Array(1024 * 1024);
+        postMessage(arrayToPostz.buffer, [arrayToPostz.buffer]);
+      }
+      break;*/
     case "PingAndInc":
-      //postMessage({ cmd: "PingAndInc", val: e.data.val + 1, "array": e.data.array });
-      e.data.val++;
-      postMessage(e.data);
+      {
+        let arrayToPostz = new Float32Array(16);
+        let yTransfer = e.data.yTransfer;
+        let aReceived = e.array;
+        if (aReceived != null) {
+          let fred = 0;
+        }
+        let iCtr = e.data.iCtr;
+        if (yTransfer) {
+          postMessage({ cmd: "PingAndInc", yTransfer: yTransfer, iCtr: iCtr + 1 }, arrayToPostz.buffer, [arrayToPostz.buffer]);
+        } else {
+          // copy
+          postMessage({ cmd: "PingAndInc", yTransfer: yTransfer, iCtr: iCtr + 1, arrayz: arrayToPostz.buffer });
+        }
+        //e.data.val++;
+        //postMessage(e.data);
+      }
       break;
     case "ComputePitch":
       //eg when no shared memory the ring buffer will be in here.
@@ -165,7 +85,8 @@ onmessage = function (e) {
       let pitch = pitchComputeMethod(pitchSamplesBuffer);
       if (Settings.ySharedMemory) {
         samplesBuffer[SamplesBuffer.pitchInd] = pitch;
-      } else { // post to main thread
+      } else {
+        // post to main thread
         postMessage({ cmd: "Pitch", val: pitch });
       }
       break;
@@ -190,9 +111,11 @@ onmessage = function (e) {
         audioWorkletPort.onmessage = function (e) {
           //console.log("onmessage!!" + e.data);
           switch (e.data.cmd) {
+            case undefined:
+              let transferredSamples = new Float32Array(e.data);
             case "Samples":
               {
-                let newSamples = e.data.val;
+                let newSamples = e.data.val || transferredSamples;
                 //let samplesBuffer = SamplesBuffer.f32SamplesBuffer;
                 let free = samplesBuffer[SamplesBuffer.freeInd];
                 samplesBuffer.set(newSamples, free); // might this be faster with uint8?

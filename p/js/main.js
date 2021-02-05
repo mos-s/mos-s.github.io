@@ -32,11 +32,12 @@ LINKS
 import { yin } from "./sound/pitch/yin.js";
 //import { gpgpu } from "./vizitJs/GPGPU.js";
 //import * as gpgpu from "./gpgpu.js";
-import { SoundObject, computeLatestPitch, getLatestPitch} from "./sound/Sound.js";
+import { SoundObject, computeLatestPitch, getLatestPitch } from "./sound/Sound.js";
 import * as Pitch from "./sound/pitch/PitchDisplay.js";
 
 //import { name, draw, reportArea, reportPerimeter } from './modules/square.js';
 var yDoTiming = false;
+let yDisplayWave = false;
 /*navigator.mediaDevices.getUserMedia({ audio: true })
     .then(successCallback)
     .catch(failureCallback);
@@ -79,7 +80,7 @@ if (navigator.mediaDevices) {
   alert("getUserMedia not supported on your browser!!");
 }
 
-function determineFastestMethod() {
+/*function determineFastestMethod() {
   // returns fastest method or null
   const iTimingIts = 1000;
   var pitchMethods = [
@@ -100,7 +101,7 @@ function determineFastestMethod() {
   }
 
   return pitchMethods[minMsIndex];
-}
+}*/
 
 function init(stream) {
   window.stream = stream;
@@ -108,66 +109,13 @@ function init(stream) {
     yDoTiming = true;
   }
 
-  let pitchMethod;
-  /*if (getRequestParam("gpgpu") == "true") {
-    pitchMethod = gpgpu;
-  } else if (getRequestParam("yin") == "true") {
-    pitchMethod = yin;
-  } else {
-    pitchMethod = determineFastestMethod();
-  }*/
-  //pitchMethod = yin;
-  //setUpAudioProcessor(stream, pitchMethod);
-
- /*if (window.iPitchMethod == Settings.iGpgpuMethod) {
-    gpgpu.exec();
-  }
-*/
-
+  window.usefulAlert();
   soundObject = new SoundObject();
   if (soundObject.setUpSoundProcessor(stream, yin)) {
-    makeButton();
+    makeButtons();
   }
- 
-
- // }
-  function stopWorker() {
-    //soundWorker.terminate();
-    /// soundWorker.postMessage(111);
-    //soundWorker = undefined;
-    yComputePitch = true;
-  } /*
-  if (!window.requestAnimationFrame) {
-    window.requestAnimationFrame = window.webkitRequestAnimationFrame;
-  }
-  //kickoff? requestAnimationFrameId = window.requestAnimationFrame( updatePitch ); //??
-  canvasElem = document.getElementById("output");
-  canvasContext = canvasElem.getContext("2d");
-  canvasContext.strokeStyle = "black";
-  canvasContext.lineWidth = 1;
-  //soundObject.setCanvasContext(canvasContext);
-  //soundObject.onPitchDeduced = onPitchDeduced;
-  DEBUGCANVAS = document.getElementById("waveform");
-  if (DEBUGCANVAS) {
-    waveCanvas = DEBUGCANVAS.getContext("2d");
-    waveCanvas.strokeStyle = "black";
-    waveCanvas.lineWidth = 1;
-  }
-  */
-
-  //startWorker();
-  /*let startWorkerButton = document.getElementById("startWorker");
-  startWorkerButton.onclick = startWebWorkers;
-  let stopWorkerButton = document.getElementById("stopWorker");
-  stopWorkerButton.onclick = stopWorker;
-*/
 }
 
-// Connect the microphone to the script processor
-/// source.connect(node);
-//source.connect(audioContext.destination);
-/// node.connect(audioContext.destination);
-//The onaudioprocess event gives us access to the Raw PCM data stream from the microphone. We can access the buffered data like so:
 
 /*node.onaudioprocess = function (data) {
     var leftChannel = data.inputBuffer.getChannelData(0).buffer;
@@ -187,11 +135,25 @@ function getRequestParam(name) {
   if ((name = new RegExp("[?&]" + encodeURIComponent(name) + "=([^&]*)").exec(location.search))) return decodeURIComponent(name[1]);
 }
 
-function makeButton() {
-  const playButton = document.getElementById("playButton");
+function setEltVisible(x, yDisplay, sMode) {
+  x.style.display = yDisplay ? sMode || "block" : "none";
+}
 
-  // play pause audio
+function makeButtons() {
+  const playButton = document.getElementById("playButton");
   playButton.addEventListener("click", soundObject.audioButtonHandler);
+  //soundObject.audioButtonHandler();
+  setEltVisible(playButton, false);
+
+  const waveOnOffButton = document.getElementById("waveOnOffButton");
+  setEltVisible(waveOnOffButton, window.ySharedMemory, "inline");
+  if (window.ySharedMemory) {
+    function waveOnOffButtonHandler() {
+      yDisplayWave = !yDisplayWave;
+      setEltVisible(document.getElementById("waveform"), yDisplayWave);
+    }
+    waveOnOffButton.addEventListener("click", waveOnOffButtonHandler);
+  }
 }
 
 let delayPitchComputeToJustBeforeNextRenderMs = 0;
@@ -201,17 +163,18 @@ function displayPitch(timestamp) {
   if (soundObject != null) {
     displayPitchMsTime = performance.now();
     Pitch.displayPitch(getLatestPitch());
-///    Pitch.displayWave();
+    if (yDisplayWave) {
+      Pitch.displayWave();
+    }
     let earlyMs = displayPitchMsTime - window.computedAndSavedPitchMsTime;
-    if (earlyMs < (16.66 + 2.0)) {
-      delayPitchComputeToJustBeforeNextRenderMs += (earlyMs - 1.0);
+    if (earlyMs < 16.66 + 2.0) {
+      delayPitchComputeToJustBeforeNextRenderMs += earlyMs - 1.0;
     }
     //delayPitchComputeToJustBeforeNextRenderMs = 0; // during dev
     //setTimeout(computeLatestPitch, delayPitchComputeToJustBeforeNextRenderMs); //try and delay conversion until last moment before next frame!
     computeLatestPitch();
     //console.log("\nearlyMs = " + earlyMs);
     //console.log("\ndelayPitchComputeToJustBeforeNextRenderMs = " + delayPitchComputeToJustBeforeNextRenderMs);
-
   }
   requestAnimationFrame(displayPitch);
 }

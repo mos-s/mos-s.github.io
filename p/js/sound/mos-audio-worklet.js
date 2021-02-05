@@ -104,13 +104,13 @@ class MosAudioWorkletProcessor extends AudioWorkletProcessor {
 
     // Allocate the buffer for the heap access. Start with stereo, but it can
     // be expanded up to 32 channels.
-///    this._heapInputBuffer = new SamplesBufferWasm(Module, RENDER_QUANTUM_FRAMES, 1, SAMPLE_BLOCKS);
-///    this._heapOutputBuffer = new HeapAudioBuffer(Module, RENDER_QUANTUM_FRAMES, 2, MAX_CHANNEL_COUNT);
+    ///    this._heapInputBuffer = new SamplesBufferWasm(Module, RENDER_QUANTUM_FRAMES, 1, SAMPLE_BLOCKS);
+    ///    this._heapOutputBuffer = new HeapAudioBuffer(Module, RENDER_QUANTUM_FRAMES, 2, MAX_CHANNEL_COUNT);
 
     //this.heap = Module._malloc(iSamplesInBuffer * 4);
     //this.pfSamples = Module.HEAPF32.subarray(this.heap >> 2, (this.heap + 128 * 4) >> 2);
 
-///    this._kernel = new Module.SimpleKernel();
+    ///    this._kernel = new Module.SimpleKernel();
 
     // this.port.postMessage("Hi from mos-audio-worklet!"); // to main?
   }
@@ -194,7 +194,7 @@ class MosAudioWorkletProcessor extends AudioWorkletProcessor {
           //this.pfSamples.set(newSamples);
 
           //this._heapInputBuffer.getChannelData(0).set(newSamples); //this could put new samples in correct place in circular malloced wasm buffer!?
-/* 
+          /* 
          let fred = this._heapInputBuffer.getChannelData(0);
           fred.set(newSamples);
 
@@ -224,7 +224,11 @@ class MosAudioWorkletProcessor extends AudioWorkletProcessor {
           }
           break;
         case POST_TO_WORKER:
-          this.port.postMessage({ cmd: "Samples", val: newSamples });
+          if (Settings.yTransferSampleBlocks) {
+            this.port.postMessage(newSamples.buffer, [newSamples.buffer]);
+          } else {
+            this.port.postMessage({ cmd: "Samples", val: newSamples });
+          }
           break;
 
         case ALL_IN_THIS_THREAD:

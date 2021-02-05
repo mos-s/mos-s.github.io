@@ -38,7 +38,7 @@ var audioContext = null;
 var soundProcessor; // ie audioWorklet or currentSoundProcessor!
 var soundWorker, pitchWorker;
 var canvasContext;
-var iCtr = 0;
+var iPingCtr = 0;
 var mediaStreamSource = null;
 let oscillator;
 let free;
@@ -178,8 +178,8 @@ export class SoundObject extends Object {
 
     //Set up soundWorker and pitchWorker from main thread. Also set up message channel BETWEEN them! Also beween audioWorker and soundWorker (possible?)
     //Audio from mic into ring buffer:
-    let msg = typeof AudioWorkletNode !== "undefined" ? "true" : "false";
-    alert("AudioWorkletNode defined = " + msg);
+    // let msg = typeof AudioWorkletNode !== "undefined" ? "true" : "false";
+    // alert("AudioWorkletNode defined = " + msg);
     //let ySecureContext = window.isSecureContext;
 
     // ============== Set up soundWorker - a dedicated Web Worker ==============
@@ -187,16 +187,17 @@ export class SoundObject extends Object {
       alert("Sorry, your browser does not support Web Workers..."); // Better place for this? We want to abort.
       return false;
     }
-  
+
     soundWorker = new Worker("js/sound/soundWorker.js", { type: "module" });
     soundWorker.postMessage({ cmd: "Settings", val: Settings });
     soundWorker.postMessage({ cmd: "SamplesBuffer", val: window.samplesBuffer });
     let pingAndIncStartNsTime;
-    let arrayToPost = new Float32Array(1024 * 1);
+    let arrayToPost = new Float32Array(1024 * 200);
     for (var i = 0; i < arrayToPost.length; i++) {
       arrayToPost[i] = i;
     }
-
+    const yTransfer = true;
+    let iPingCtr;
     soundWorker.onmessage = function (e) {
       // This is for response to "ComputePitch" cmd.
       switch (e.data.cmd) {
@@ -207,13 +208,24 @@ export class SoundObject extends Object {
           //  pitchSamplesBuffer = e.data.val; // this should/could be a transfer!?
           //}
           break;
+        case undefined:
+
         case "PingAndInc":
-          let i = e.data.val;
-          if (i == 1) {
-            pingAndIncStartNsTime = performance.now();
-          }
-          if (i <= 1001) {
-            soundWorker.postMessage({ cmd: "PingAndInc", val: i + 1, array: arrayToPost });
+          //let iCtr = e.data.iCtr;
+          //if (iCtr == 1) {
+          //  pingAndIncStartNsTime = performance.now();
+          //}
+          if (iPingCtr < 1000) {
+            let arrayToPostz = new Float32Array(1024 * 1024);
+            if (yTransfer) {
+              //soundWorker.postMessage({ cmd: "PingAndInc", yTransfer: yTransfer, iCtr: iPingCtr + 1 }, [arrayToPostz.buffer]);
+              soundWorker.postMessage(arrayToPostz.buffer, [arrayToPostz.buffer]);
+            } else {
+              // copy
+              soundWorker.postMessage({ cmd: "PingAndInc", yTransfer: yTransfer, iCtr: iPingCtr + 1, arrayz: arrayToPostz.buffer });
+            }
+            iPingCtr += 2;
+            //soundWorker.postMessage({ cmd: "PingAndInc", transfer: yTransfer, iCtr: i + 1}, [arrayToPostz.buffer]);
           } else {
             var endNsTime = performance.now();
             var ellapsedItsMs = endNsTime - pingAndIncStartNsTime;
@@ -226,8 +238,19 @@ export class SoundObject extends Object {
       }
     };
 
-    //soundWorker.postMessage({ cmd: "PingAndInc", val: 0, "array": arrayToPost }); // postMessage timing
-
+    const yMeasurePostMessage = false;
+    if (yMeasurePostMessage) {
+      let arrayToPostz = new Float32Array(1024 * 1024);
+      iPingCtr = 0;
+      pingAndIncStartNsTime = performance.now();
+      if (yTransfer) {
+        //soundWorker.postMessage({ cmd: "PingAndInc", yTransfer: yTransfer, iCtr: 0 }, arrayToPost, [arrayToPost.buffer]);
+        soundWorker.postMessage(arrayToPost.buffer, [arrayToPostz.buffer]);
+      } else {
+        // copy
+        soundWorker.postMessage({ cmd: "PingAndInc", yTransfer: yTransfer, iCtr: 0, array: arrayToPostz.buffer });
+      }
+    }
     // ============== Set up soundProcessor - ie AudioWorkletNode or ScriptProcessor ==============
     if (window.yAudioWorklet) {
       try {
@@ -250,6 +273,7 @@ export class SoundObject extends Object {
           soundProcessor.port.postMessage({ cmd: "SamplesBuffer", val: window.samplesBuffer });
           soundWorker.postMessage({ cmd: "AudioPort", val: 1 }, [soundProcessor.port]); // after which audioWorklet postMessage will go to soundWorker!
         }
+        this.audioButtonHandler();
       } catch (e) {
         alert("Problem inside js/sound/mos-audio-worklet.js !: " + e); // this catch should only contain audioWorklet Node creation!!?
       }
@@ -261,6 +285,7 @@ export class SoundObject extends Object {
       } else {
       }
       this.setUpScriptProcessor(); //mediaStream, pitchMethod_);
+      this.audioButtonHandler();
     }
     return true;
   }
@@ -303,6 +328,12 @@ export class SoundObject extends Object {
       } else {
         if (soundWorker != null) {
           soundWorker.postMessage({ cmd: "Samples", val: newSamples });
+          /*if (Settings.yTransferSampleBlocks) {
+            soundWorker.postMessage(newSamples.buffer, [newSamples.buffer]); // Produces - "Sound.js:332 "Uncaught DOMException: Failed to execute 'postMessage' on 'Worker': ArrayBuffer at index 0 is already detached."
+          } else {
+            soundWorker.postMessage({ cmd: "Samples", val: newSamples });
+          }*/
+
         }
       }
 
