@@ -326,7 +326,7 @@ export class SoundObject extends Object {
         }
         samplesBuffer[SamplesBuffer.freeInd] = free;
       } else {
-        if (soundWorker != null) {
+        //if (soundWorker != null) {
           soundWorker.postMessage({ cmd: "Samples", val: newSamples });
           /*if (Settings.yTransferSampleBlocks) {
             soundWorker.postMessage(newSamples.buffer, [newSamples.buffer]); // Produces - "Sound.js:332 "Uncaught DOMException: Failed to execute 'postMessage' on 'Worker': ArrayBuffer at index 0 is already detached."
@@ -334,7 +334,7 @@ export class SoundObject extends Object {
             soundWorker.postMessage({ cmd: "Samples", val: newSamples });
           }*/
 
-        }
+        //}
       }
 
       // if (e.inputBuffer.duration != 0.010666666666666666) {
@@ -497,11 +497,11 @@ export class SoundObject extends Object {
 } // end of class
 var prevNsTime = 0;
 export function computeLatestPitch() {
-  if (soundWorker) {
+ // if (soundWorker) {
     soundWorker.postMessage({ cmd: "ComputePitch" });
-  } else {
-    // currentSoundProcessor.port.postMessage({ cmd: "ComputePitch" });
-  }
+ // } else {
+ //   // currentSoundProcessor.port.postMessage({ cmd: "ComputePitch" });
+  //}
 }
 
 export function computeLatestPitchOld() {

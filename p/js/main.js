@@ -43,19 +43,11 @@ let yDisplayWave = false;
     .catch(failureCallback);
 On success, our successCallback will be called with a MediaStream object which we can use to access the microphone:
 */
-var yComputePitch;
-var soundWorker; //web workers
+
 let soundObject;
 var requestAnimationFrameId = null;
 //var DEBUGCANVAS = null;
 export var iSampleRate;
-// vars from pitchdetect
-var isPlaying = false;
-var sourceNode = null;
-var analyser = null;
-var theBuffer = null;
-
-//var detectorElem, canvasElem, canvasContext, waveCanvas, pitchElem, noteElem, detuneElem, detuneAmount;
 
 if (navigator.mediaDevices) {
   //alert("getUserMedia supported.");
