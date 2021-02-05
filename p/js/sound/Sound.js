@@ -183,6 +183,11 @@ export class SoundObject extends Object {
     //let ySecureContext = window.isSecureContext;
 
     // ============== Set up soundWorker - a dedicated Web Worker ==============
+    if (typeof Worker == "undefined") {
+      alert("Sorry, your browser does not support Web Workers..."); // Better place for this? We want to abort.
+      return false;
+    }
+  
     soundWorker = new Worker("js/sound/soundWorker.js", { type: "module" });
     soundWorker.postMessage({ cmd: "Settings", val: Settings });
     soundWorker.postMessage({ cmd: "SamplesBuffer", val: window.samplesBuffer });
@@ -191,7 +196,7 @@ export class SoundObject extends Object {
     for (var i = 0; i < arrayToPost.length; i++) {
       arrayToPost[i] = i;
     }
-   
+
     soundWorker.onmessage = function (e) {
       // This is for response to "ComputePitch" cmd.
       switch (e.data.cmd) {
@@ -225,7 +230,6 @@ export class SoundObject extends Object {
 
     // ============== Set up soundProcessor - ie AudioWorkletNode or ScriptProcessor ==============
     if (window.yAudioWorklet) {
-      
       try {
         if (window.isSecureContext) {
           let fred = 0;
@@ -234,7 +238,7 @@ export class SoundObject extends Object {
         //await audioContext.audioWorklet.addModule("js/sound/mos-audio-worklet.js", {
         //  credentials: 'omit',
         //});
-        audioContext.resume(); // firefox?
+        //audioContext.resume(); // firefox?
         soundProcessor = new window.AudioWorkletNode(audioContext, "mos-audio-worklet");
         if (window.ySharedMemory) {
           //AudioWorklet will write directly to Settings.f32buffer which is shared memory so will need Settings and SamplesBuffer.
@@ -249,7 +253,7 @@ export class SoundObject extends Object {
       } catch (e) {
         alert("Problem inside js/sound/mos-audio-worklet.js !: " + e); // this catch should only contain audioWorklet Node creation!!?
       }
-    } else {  
+    } else {
       // AudioWorklet not available so make a ScriptProcessor (which runs in this thread).
       soundProcessor = audioContext.createScriptProcessor(window.iSamplesInBlock, 2, 2);
       // let soundProcessorNode2 = audioContext.createScriptProcessor(4 * 1024, 2, 2);
@@ -258,6 +262,7 @@ export class SoundObject extends Object {
       }
       this.setUpScriptProcessor(); //mediaStream, pitchMethod_);
     }
+    return true;
   }
 
   setUpAudioWorkletProcessor(mediaStream, pitchMethod_) {
@@ -274,59 +279,53 @@ export class SoundObject extends Object {
     let newPlaybackTime;
     let prevTimeStamp = 0;
     let newTimeStamp;
-    let samplesBuffer = SamplesBuffer.f32SamplesBuffer;;
-    const yUseWorker = true;
-    if (yUseWorker) {
-      soundProcessor.free2 = 0;
-      soundProcessor.onaudioprocess = function (e) {
-        if (window.ySharedMemory) {
-          let newSamples = e.inputBuffer.getChannelData(0);
-          //let samplesBuffer = SamplesBuffer.f32SamplesBuffer;
-          let free = samplesBuffer[SamplesBuffer.freeInd];
-          samplesBuffer.set(newSamples, free); // might this be faster with uint8?
+    let samplesBuffer = SamplesBuffer.f32SamplesBuffer;
+    soundProcessor.free2 = 0;
+    soundProcessor.onaudioprocess = function (e) {
+      let newSamples = e.inputBuffer.getChannelData(0);
+      if (window.ySharedMemory) {
+        //let samplesBuffer = SamplesBuffer.f32SamplesBuffer;
+        let free = samplesBuffer[SamplesBuffer.freeInd];
+        samplesBuffer.set(newSamples, free); // might this be faster with uint8?
 
-          // Copy also to other end of ring buffer if appropriate
-          if (this.free2 >= SamplesBuffer.iSamples && this.free2 < SamplesBuffer.iAugmentedSamples) {
-            samplesBuffer.set(newSamples, this.free2); // might this be faster with uint8?
-            this.free2 += Settings.iSamplesInBlock;
-          }
-
-          free += Settings.iSamplesInBlock;
-          if (free >= SamplesBuffer.iSamples) {
-            this.free2 = free;
-            free = 0;
-          }
-          samplesBuffer[SamplesBuffer.freeInd] = free;
-        } else {
-          if (soundWorker != null) {
-            soundWorker.postMessage({ cmd: "Samples", val: e.inputBuffer.getChannelData(0) });
-          }
+        // Copy also to other end of ring buffer if appropriate (so can always read pitchSamples in one go!)
+        if (this.free2 >= SamplesBuffer.iSamples && this.free2 < SamplesBuffer.iAugmentedSamples) {
+          samplesBuffer.set(newSamples, this.free2); // might this be faster with uint8?
+          this.free2 += Settings.iSamplesInBlock;
         }
 
-        // if (e.inputBuffer.duration != 0.010666666666666666) {
-        //   let fred = 0;
-        // }
-        const yLogSampleBlockTimes = false;
-        if (yLogSampleBlockTimes) {
-          newCurrentTime = e.currentTarget.context.currentTime;
-          console.log("DcurrentTime: " + (newCurrentTime - prevCurrentTime));
-          prevCurrentTime = newCurrentTime;
-
-          newPlaybackTime = e.playbackTime;
-          console.log("DPlaybackTime: " + (newPlaybackTime - prevPlaybackTime));
-          prevPlaybackTime = newPlaybackTime;
-
-          console.log("playBackTime - currentTime: " + (newPlaybackTime - newCurrentTime));
-
-          newTimeStamp = e.timeStamp;
-          console.log("DtimeStamp: " + (newTimeStamp - prevTimeStamp));
-          prevTimeStamp = newTimeStamp;
+        free += Settings.iSamplesInBlock;
+        if (free >= SamplesBuffer.iSamples) {
+          this.free2 = free;
+          free = 0;
         }
-      };
-    } else {
-      // Currently we require Worker to be available. Should abort with message here?
-      soundProcessor.onaudioprocess = this.processWaveInToDate;
-    }
+        samplesBuffer[SamplesBuffer.freeInd] = free;
+      } else {
+        if (soundWorker != null) {
+          soundWorker.postMessage({ cmd: "Samples", val: newSamples });
+        }
+      }
+
+      // if (e.inputBuffer.duration != 0.010666666666666666) {
+      //   let fred = 0;
+      // }
+      const yLogSampleBlockTimes = false;
+      if (yLogSampleBlockTimes) {
+        newCurrentTime = e.currentTarget.context.currentTime;
+        console.log("DcurrentTime: " + (newCurrentTime - prevCurrentTime));
+        prevCurrentTime = newCurrentTime;
+
+        newPlaybackTime = e.playbackTime;
+        console.log("DPlaybackTime: " + (newPlaybackTime - prevPlaybackTime));
+        prevPlaybackTime = newPlaybackTime;
+
+        console.log("playBackTime - currentTime: " + (newPlaybackTime - newCurrentTime));
+
+        newTimeStamp = e.timeStamp;
+        console.log("DtimeStamp: " + (newTimeStamp - prevTimeStamp));
+        prevTimeStamp = newTimeStamp;
+      }
+    };
 
     // scriptNode.onaudioprocess = function (e) {
     /*

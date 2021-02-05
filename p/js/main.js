@@ -125,48 +125,12 @@ function init(stream) {
 */
 
   soundObject = new SoundObject();
-  soundObject.setUpSoundProcessor(stream, yin);
-  makeButton();
-  let oneShot = true;
-  function startWebWorkers() {
-    if (typeof Worker !== "undefined") {
-      if (typeof soundWorker == "undefined") {
-        soundWorker = new Worker("soundWorker.js", { type: "module" });
-        //soundWorker = new Worker("exampleWorker.js", { type: "module" });
-        window.soundWorker = soundWorker;
-
-        var fred = 0;
-      }
-      let iCtr = 0;
-      /*soundWorker.onmessage = function (e) {
-        //document.getElementById("result").innerHTML = event.data;
-        //console.log(iCtr);
-        //iCtr++;
-        //if (yComputePitch) {
-        yComputePitch = false;
-        let inputTex = gpgpu.computeInputTexFromFloatSamples_RGBA_Worker(e.data);
-        ///gpgpu.execShader2(inputTex); // just calls Shader.run!
-        if (oneShot) {
-          oneShot = false;
-        } else {
-          // if not too near to audio interrupt then !?
-          gpgpu.getDotProductsRGBA(); // ie readpixels = should not be any wait (unless nore than samplesblock interval) for computation to finish
-        }
-       gpgpu.execShader2(inputTex); // just calls Shader.run!
-
-        let pitch = gpgpu.yin2fromC();
-        console.log("\npitch = " + pitch);
-        //}
-      };*/
-      /*soundWorker.onmessage = function (e) {
-        SoundObject.prototype.setWaveBuffer(e.data)
-      };
-    
-      */
-    } else {
-      document.getElementById("result").innerHTML = "Sorry, your browser does not support Web Workers...";
-    }
+  if (soundObject.setUpSoundProcessor(stream, yin)) {
+    makeButton();
   }
+ 
+
+ // }
   function stopWorker() {
     //soundWorker.terminate();
     /// soundWorker.postMessage(111);

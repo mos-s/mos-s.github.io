@@ -21,25 +21,33 @@
     <!-- https://stackoverflow.com/questions/51878038/how-to-load-js-file-after-html-got-loaded -->
 
     <title>Document</title>
+    <style>
+    .sameLine {
+    overflow: hidden;
+    white-space: nowrap;
+    background-color: #ff8;
+    }
+    </style>
   </head>
 
   <body>
+    
     <div>
-      <button id="playButton" type="button">Start</button>
+      <h3>Pitch - version: 20 --      <button id="playButton" type="button">Start</button></h3> 
     </div>
     <!--p>Count numbers: <output id="result"></output></p>
     <button id="startWorker">Start Worker</button>
     <button id="stopWorker">Stop Worker</button-->
 
-    <h1>pitchA18</h1>
+  
 
-
-    <div id="detector" class="vague" style="float:left;">
-      <div class="pitch"><span id="pitch">--</span>Hz</div>
+    <!--div id="detector" class="vague" style="float:left;">
+      <div class="pitch"><span id="pitch">
       <div class="note"><span id="note">--</span></div>
       <canvas id="output" width="40" height="600" ></canvas>
       <div id="detune"><span id="detune_amt">--</span><span id="flat">cents &#9837;</span><span id="sharp">cents &#9839;</span></div>
-    </div>
+    </div-->
+    <div style="float:left;"><canvas id="output" width="40" height="600" ></canvas></div>
     <div style="float:left;"><canvas id="waveform" width="512" height="256" ></canvas></div>
     <!--div style="width: 100px; float:left; height:100px; background:gray; margin:10px"-->
 
