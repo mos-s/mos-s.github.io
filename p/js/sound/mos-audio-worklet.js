@@ -15,8 +15,9 @@
  * the License.
  */
 
-import Module from "./simple-kernel.wasmmodule.js";
-import { RENDER_QUANTUM_FRAMES, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffer, SamplesBufferWasm } from "./wasm-audio-helper.js";
+///import Module from "./simple-kernel.wasmmodule.js";
+///import { RENDER_QUANTUM_FRAMES, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffer, SamplesBufferWasm } from "./wasm-audio-helper.js";
+
 //import { iSamplesInBlock, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffer, SamplesBuffer } from "./sound/Sound.js";
 //import { yin } from "./pitch/yin.js";
 //import * as SamplesBuffer from "./SamplesBuffer.js";
@@ -103,13 +104,13 @@ class MosAudioWorkletProcessor extends AudioWorkletProcessor {
 
     // Allocate the buffer for the heap access. Start with stereo, but it can
     // be expanded up to 32 channels.
-    this._heapInputBuffer = new SamplesBufferWasm(Module, RENDER_QUANTUM_FRAMES, 1, SAMPLE_BLOCKS);
-    this._heapOutputBuffer = new HeapAudioBuffer(Module, RENDER_QUANTUM_FRAMES, 2, MAX_CHANNEL_COUNT);
+///    this._heapInputBuffer = new SamplesBufferWasm(Module, RENDER_QUANTUM_FRAMES, 1, SAMPLE_BLOCKS);
+///    this._heapOutputBuffer = new HeapAudioBuffer(Module, RENDER_QUANTUM_FRAMES, 2, MAX_CHANNEL_COUNT);
 
     //this.heap = Module._malloc(iSamplesInBuffer * 4);
     //this.pfSamples = Module.HEAPF32.subarray(this.heap >> 2, (this.heap + 128 * 4) >> 2);
 
-    this._kernel = new Module.SimpleKernel();
+///    this._kernel = new Module.SimpleKernel();
 
     // this.port.postMessage("Hi from mos-audio-worklet!"); // to main?
   }
