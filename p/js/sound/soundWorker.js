@@ -11,11 +11,13 @@ onmessage = function (e) {
   //   let fred = 0;
   // }
   let undefined;
+  let transferredSamples;
   switch (e.data.cmd) {
     /*case undefined:
       // This currently conflicts with PingAmdInc transfer measuring below!!?
       let transferredSamples = new Float32Array(e.data);
       */
+     
     case "Samples":
       // Put this in a function because duplicated below!?
       {
