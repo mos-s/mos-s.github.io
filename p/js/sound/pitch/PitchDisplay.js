@@ -26,7 +26,7 @@ function initPixiJS() {
   // Autodetect, create and append the renderer to the body element
   //var renderer = PIXI.autoDetectRenderer(120, 364, { backgroundColor: #0000FF, antialias: true });
   iDisplayWidth = Math.min(window.innerWidth, 200);
-  iDisplayHeight = window.innerHeight - 50;
+  iDisplayHeight = window.innerHeight - 100;
   renderer = PIXI.autoDetectRenderer({ width: iDisplayWidth, height: iDisplayHeight, backgroundColor: 0x00ffdd, antialias: true });
   //var renderer = PIXI.autoDetectRenderer({backgroundColor : 0x1099bb, antialias: true}); // default 800 x 600?
   //window.innerWidth, window.innerHeight
