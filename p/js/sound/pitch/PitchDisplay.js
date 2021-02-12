@@ -22,12 +22,47 @@ if (!window.requestAnimationFrame) {
   window.requestAnimationFrame = window.webkitRequestAnimationFrame;
 }
 
+function initTwoJS() {
+  var two = new Two({
+    fullscreen: true,
+    autostart: true
+  }).appendTo(document.body);
+  //var rect = two.makeRectangle(two.width / 2, two.height / 2, 50 ,50);
+  var color = 'rgba(255, 128, 0, 0.66)';
+  //rect.fill = color;
+  //rect.noStroke();
+
+  //var radius = 44;//two.height / 4;
+  pitchDisk = two.makeCircle(two.width / 3, two.height / 2, pitchDiskRadius);
+  pitchDisk.fill = color;
+  pitchDisk.noStroke();
+  pitchDisk.translation.x = 10;
+  two.bind('update', function() {
+    //rect.rotation += 0.01;
+    //pitchDisk.translation.x += 5;
+    //if (core.translation.x > two.width) {pitchDisk.translation.x = 0;}
+  });
+
+}
+function display2dTwoJS(pitch) {
+  let frequency = pitch; // 261.63;//pitch;
+  const middleCfreq = 261.63;
+  let midiNote = frequencyToMidiNoteNumber(frequency);
+  let posInOctave = (midiNote + 0.5) % 12;
+  let iOctave = Math.floor((midiNote + 0.5) / 12);
+  //console.log("P = " + pitch);
+  posInOctave = posInOctave; //frequencyToMidiNoteNumber(frequency);//12 * (Math.log( frequency / 440 )/Math.log(2) ); // relative to middle A?
+
+  pitchDisk.translation.y = iDisplayHeight - (posInOctave / 12) * iDisplayHeight;
+  pitchDisk.translation.x = ((iOctave - 2) / iOctaves) * iDisplayWidth;
+
+}
+
 function initPixiJS() {
-  // Autodetect, create and append the renderer to the body element
+    // Autodetect, create and append the renderer to the body element
   //var renderer = PIXI.autoDetectRenderer(120, 364, { backgroundColor: #0000FF, antialias: true });
-  iDisplayWidth = Math.min(window.innerWidth, 200);
-  iDisplayHeight = window.innerHeight - 100;
   renderer = PIXI.autoDetectRenderer({ width: iDisplayWidth, height: iDisplayHeight, backgroundColor: 0x00ffdd, antialias: true });
+  //renderer = PIXI.
   //var renderer = PIXI.autoDetectRenderer({backgroundColor : 0x1099bb, antialias: true}); // default 800 x 600?
   //window.innerWidth, window.innerHeight
   document.body.appendChild(renderer.view);
@@ -154,11 +189,16 @@ function init3dGraphics() {
 }
 
 function initGraphics() {
+  iDisplayWidth = Math.min(window.innerWidth, 200);
+  iDisplayHeight = window.innerHeight - 100;
+
   if (y3dGraphics) {
     init3JS(); //init3dGraphics();
   } else {
-    initPixiJS(); //init2dGraphics();
+    //initPixiJS(); //init2dGraphics();
     //displayPitch2d(13.5); //dev
+    initTwoJS();
+    //display2dTwoJS(440);
   }
 }
 initGraphics();
@@ -167,12 +207,17 @@ export function displayPitch(pitch) {
   if (y3dGraphics) {
     displayPitch3d(pitch);
   } else {
-    displayPitch2d(pitch);
+    //displayPitch2dCanvas(pitch);
+    //displayPitch2dPixi(pitch);
+    display2dTwoJS(pitch);
   }
 }
 export function displayPitch3d(pitch) {}
 
-export function displayPitch2d(pitch) {
+//function pitchToY(pitch) {
+//}
+
+export function displayPitch2dPixi(pitch) {
   //pitch = 13.5;
   let maxPitch = 1000;
   let frequency = pitch; // 261.63;//pitch;
@@ -215,7 +260,7 @@ function centsOffFromPitch(frequency, note) {
   return Math.floor((1200 * Math.log(frequency / frequencyFromNoteNumber(note))) / Math.log(2));
 }
 
-export function displayPitch2dOld(pitch) {
+export function displayPitch2dCanvas(pitch) {
   if (pitch > 0) {
     var fred = 0;
   }

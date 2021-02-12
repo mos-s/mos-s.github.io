@@ -10,6 +10,7 @@
 <!--script src="https://pixijs.download/v6.0.0-rc.2/pixi.min.js"></script-->
     
     <script src="./js/pixi.js"></script>
+    <script src="js/two.js"></script>
 
     <script type="module" src="./js/vizitJs/GPGPUold.js"></script>
     <script type="module" src="./js/vizitJs/ShaderProgram.js?d=d"></script>
@@ -55,7 +56,9 @@
           height: 100%;
           touch-action: none;
       }
-
+        canvas {
+            background-color: #00ffdd;
+        }
 
     </style>
   </head>
@@ -63,7 +66,7 @@
   <body>
     
     <div>
-      <h3>Pitch - version: 31 --      <button id="playButton" type="button" hidden>Start</button>&nbsp;&nbsp;<button id="waveOnOffButton" type="button" hidden>Wave On/Off</button></h3> 
+      <h3>Pitch - version: 32 --      <button id="playButton" type="button" hidden>Start</button>&nbsp;&nbsp;<button id="waveOnOffButton" type="button" hidden>Wave On/Off</button></h3> 
     </div>
     <!--p>Count numbers: <output id="result"></output></p>
     <button id="startWorker">Start Worker</button>
