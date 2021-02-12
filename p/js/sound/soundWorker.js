@@ -209,7 +209,7 @@ function yinComputeFromDotProduct() {
   }
 
   const threshold = 0.07;
-  const sampleRate = 48000;
+  let sampleRate = Settings.sampleRate;//48000;
   const probabilityThreshold = 0.1;
 
   let probability = 0,

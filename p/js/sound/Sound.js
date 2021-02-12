@@ -68,7 +68,8 @@ export class SoundObject extends Object {
     pitchMethod = Pitch.init();
 
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
-
+    window.sampleRate = audioContext.sampleRate;
+    Settings.sampleRate = audioContext.sampleRate;
     //setCapabilities();
     //SamplesBuffer.init(1024 * 3);
 
