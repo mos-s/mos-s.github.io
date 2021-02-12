@@ -97,10 +97,10 @@ function initVars() {
   }*/
   let urlParams = getUrlVars();
   if (urlParams.ySharedMemory) {
-    Settings.ySharedMemory = Boolean(urlParams.ySharedMemory);
+    Settings.ySharedMemory = (urlParams.ySharedMemory == 'true');
   }
   if (urlParams.yAudioWorklet) {
-    Settings.yAudioWorklet = Boolean(urlParams.yAudioWorklet);
+    Settings.yAudioWorklet = (urlParams.yAudioWorklet == 'true');
   }
   if (urlParams.iMaxSampleWl) {
     Settings.iMaxSampleWl = parseInt(urlParams.iMaxSampleWl);

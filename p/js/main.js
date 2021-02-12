@@ -128,6 +128,9 @@ function getRequestParam(name) {
 }
 
 function setEltVisible(x, yDisplay, sMode) {
+  if (x == null) {
+    let fred = 0;
+  }
   x.style.display = yDisplay ? sMode || "block" : "none";
 }
 
@@ -142,7 +145,7 @@ function makeButtons() {
   if (window.Settings.ySharedMemory) {
     function waveOnOffButtonHandler() {
       yDisplayWave = !yDisplayWave;
-      setEltVisible(document.getElementById("waveform"), yDisplayWave);
+     /// setEltVisible(document.getElementById("waveform"), yDisplayWave);
     }
     waveOnOffButton.addEventListener("click", waveOnOffButtonHandler);
   }

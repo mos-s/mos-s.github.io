@@ -12,9 +12,10 @@ onmessage = function (e) {
   // }
   let undefined;
   switch (e.data.cmd) {
-    case undefined:
+    /*case undefined:
       // This currently conflicts with PingAmdInc transfer measuring below!!?
       let transferredSamples = new Float32Array(e.data);
+      */
     case "Samples":
       // Put this in a function because duplicated below!?
       {
@@ -38,7 +39,7 @@ onmessage = function (e) {
       }
       break;
 
-    /*case undefined:
+    case undefined:
       //before using (ie uncommenting) this we currently need to comment out conflicting case undefined above!
       {
         // ie transfer!
@@ -46,7 +47,7 @@ onmessage = function (e) {
         let arrayToPostz = new Float32Array(1024 * 1024);
         postMessage(arrayToPostz.buffer, [arrayToPostz.buffer]);
       }
-      break;*/
+      break;
     case "PingAndInc":
       {
         let arrayToPostz = new Float32Array(16);

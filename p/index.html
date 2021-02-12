@@ -3,6 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--script src="http://cdn.babylonjs.com/babylon.max.js"></script-->
+    <!--script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <script src="https://code.jquery.com/pep/0.4.3/pep.js"></script-->
+<!--script src="https://pixijs.download/v6.0.0-rc.2/pixi.min.js"></script-->
+    
+    <script src="./js/pixi.js"></script>
+
     <script type="module" src="./js/vizitJs/GPGPUold.js"></script>
     <script type="module" src="./js/vizitJs/ShaderProgram.js?d=d"></script>
     <script type="module" src="./js/vizitJs/Shaders.js"></script>
@@ -22,11 +30,33 @@
 
     <title>Document</title>
     <style>
-    .sameLine {
-    overflow: hidden;
-    white-space: nowrap;
-    background-color: #ff8;
-    }
+      /*html,
+      body {
+          overflow: hidden;
+          width: 100%;
+          height: 100%;
+          margin: 0;
+          padding: 0;
+          text-align: center;
+      }
+      #renderCanvas {
+          width: 100%;
+          height: 100%;
+          touch-action: none;
+      }
+*/
+      .sameLine {
+      overflow: hidden;
+      white-space: nowrap;
+      background-color: #ff8;
+      }
+      #outputCanvas {
+          width: 10%;
+          height: 100%;
+          touch-action: none;
+      }
+
+
     </style>
   </head>
 
@@ -47,8 +77,13 @@
       <canvas id="output" width="40" height="600" ></canvas>
       <div id="detune"><span id="detune_amt">--</span><span id="flat">cents &#9837;</span><span id="sharp">cents &#9839;</span></div>
     </div-->
-    <div style="float:left;"><canvas id="output" width="40" height="600" ></canvas></div>
-    <div style="float:left;"><canvas id="waveform" width="512" height="256" ></canvas></div>
+    <!--div style="float:left;"><canvas id="outputCanvas" width="40" height="600" ></canvas></div>
+    <div style="float:left;"><canvas id="waveform" width="512" height="256" ></canvas></div-->
+    <!--canvas id="renderCanvas"></canvas-->
+
+      <!--canvas id="c"></canvas-->
+
+
     <!--div style="width: 100px; float:left; height:100px; background:gray; margin:10px"-->
 
   </body>
