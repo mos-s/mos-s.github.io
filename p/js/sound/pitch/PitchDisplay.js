@@ -59,6 +59,8 @@ function initPixiJS() {
     if (pitchDisk.x > 720) {
       pitchDisk.x = 0;
     }*/
+    
+    //wave.clear();
     //Render the stage
     renderer.render(stage);
     requestAnimationFrame(animate);
@@ -183,6 +185,12 @@ export function displayPitch2d(pitch) {
 
   pitchDisk.y = iDisplayHeight - (posInOctave / 12) * iDisplayHeight;
   pitchDisk.x = ((iOctave - 2) / iOctaves) * iDisplayWidth;
+
+  graphics.clear();
+  graphics.beginFill(0x0000ff); //0xe74c3c); // Red
+  pitchDisk = graphics.drawCircle(0, 0, pitchDiskRadius); // drawCircle(x, y, radius)
+  graphics.endFill();
+
 }
 
 function frequencyToMidiNoteNumber(frequency) {
