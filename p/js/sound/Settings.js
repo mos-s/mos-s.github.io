@@ -35,21 +35,22 @@ export let Settings; // this is what is used in other files (and posted to other
 //export const iGpgpuMethod = 0;
 //export const iYinMethod = 1;
 
-// overrides
+// overrides (Now only from url!)
 //const yAudioWorkletOverride = false; // this and SharedMemoryOverride = false simulates IOS (and Mac OS?)
 //const ySharedMemoryOverride = false; // eg simulate current firefox
 //const yTransferSampleBlocksOverride = true; // ie transfer them
-const iScriptProcessorSamplesInBlockOverride = 1024; // 1024  seems to almost completely eliminate dropped sample blocks on lenovo.
+//const iScriptProcessorSamplesInBlockOverride = 1024; // 1024  seems to almost completely eliminate dropped sample blocks on lenovo.
 //const maxWlOverride = 256;
 //const yWriteToFloatTextureOverride = false;
-const iPitchMethodOverride = iYinJsWorkerMethod; //iYinJsWorkerMethod;//iYinJsMainThreadMethod;
+//const iPitchMethodOverride = iYinJsWorkerMethod; //iYinJsWorkerMethod;//iYinJsMainThreadMethod;
+let yAudioWorkletOverride, ySharedMemoryOverride, yTransferSampleBlocksOverride, iSamplesInBlockOverride, iMaxSampleWlOverride, yWriteToFloatTextureOverride, iPitchMethodOverride;
 
 // default values
 const yTransferSampleBlocksDefault = false; // ie currently copy them
-const iScriptProcessorDefaultSamplesInBlock = 512;
+const iScriptProcessorDefaultSamplesInBlock = 1024;
 const maxWlDefault = 512;
 const yWriteToFloatTextureDefault = true; // Not true of IOS! Should test this like in https://stackoverflow.com/questions/28827511/webgl-ios-render-to-floating-point-texture
-const iPitchMethodDefault = iGpgpuMethod;
+const iPitchMethodDefault = iYinJsWorkerMethod;//iGpgpuMethod;
 
 // 'global unchanging (after init) values'!
 let ySharedMemory, yAudioWorklet, yWriteToFloatTexture; // ie capabilities!
@@ -66,7 +67,33 @@ if (typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScop
   window.usefulSettingsAlert = usefulSettingsAlert; // We can't include this in Settings as we are posting Settings to other threads! (ie with different environments)
 }
 
+
+function setOverridesFromUrlParams () {
+  let urlParams = getUrlVars();
+  if (urlParams.ySharedMemory) {
+    ySharedMemoryOverride = (urlParams.ySharedMemory == 'true');
+  }
+  if (urlParams.yAudioWorklet) {
+    yAudioWorkletOverride = (urlParams.yAudioWorklet == 'true');
+  }
+  if (urlParams.iMaxSampleWl) {
+    iMaxSampleWlOverride = parseInt(urlParams.iMaxSampleWl);
+  }
+  if (urlParams.iSamplesInBlock) {
+    if (Settings.yAudioWorklet) {
+      alert("Can not override iSamplesInBlock when yAudioWorklet=true");
+    } else {
+      iSamplesInBlockOverride = parseInt(urlParams.iSamplesInBlock);
+    }
+  }
+  if (urlParams.IOS) {
+    ySharedMemoryOverride = false;
+    yAudioWorkletOverride = false;
+  }
+
+}
 function initVars() {
+  setOverridesFromUrlParams();
   ySharedMemory = typeof ySharedMemoryOverride !== "undefined" ? ySharedMemoryOverride : typeof SharedArrayBuffer !== "undefined";
 
   yAudioWorklet = typeof yAudioWorkletOverride !== "undefined" ? yAudioWorkletOverride : typeof AudioWorkletNode !== "undefined";
@@ -75,12 +102,12 @@ function initVars() {
 
   iSamplesInBlock = yAudioWorklet
     ? 128
-    : typeof iScriptProcessorSamplesInBlockOverride !== "undefined"
-    ? iScriptProcessorSamplesInBlockOverride
+    : typeof iSamplesInBlockOverride !== "undefined"
+    ? iSamplesInBlockOverride
     : iScriptProcessorDefaultSamplesInBlock;
   //iSamplesInBlock = (typeof iScriptProcessorSamplesInBlockOverride !== "undefined") ? iScriptProcessorSamplesInBlockOverride : yAudioWorklet?typeof AudioWorkletNode !== "undefined";
 
-  iMaxSampleWl = typeof maxWlOverride !== "undefined" ? maxWlOverride : maxWlDefault;
+  iMaxSampleWl = typeof iMaxSampleWlOverride !== "undefined" ? iMaxSampleWlOverride : maxWlDefault;
 
   yWriteToFloatTexture = typeof yWriteToFloatTextureOverride !== "undefined" ? yWriteToFloatTextureOverride : yWriteToFloatTextureDefault;
 
@@ -95,28 +122,7 @@ function initVars() {
     let fred = 0;
     Settings.ySharedMemory = getUrlParam(key, Settings.ySharedMemory);
   }*/
-  let urlParams = getUrlVars();
-  if (urlParams.ySharedMemory) {
-    Settings.ySharedMemory = (urlParams.ySharedMemory == 'true');
   }
-  if (urlParams.yAudioWorklet) {
-    Settings.yAudioWorklet = (urlParams.yAudioWorklet == 'true');
-  }
-  if (urlParams.iMaxSampleWl) {
-    Settings.iMaxSampleWl = parseInt(urlParams.iMaxSampleWl);
-  }
-  if (urlParams.iSamplesInBlock) {
-    if (Settings.yAudioWorklet) {
-      alert("Can not override iSamplesInBlock when yAudioWorklet=true");
-    } else {
-      Settings.iSamplesInBlock = parseInt(urlParams.iSamplesInBlock);
-    }
-  }
-  if (urlParams.IOS) {
-    Settings.ySharedMemory = false;
-    Settings.yAudioWorklet = false;
-  }
-}
 
 function getUrlVars() {
   var vars = {};
