@@ -36,14 +36,16 @@ function initTwoJS() {
   pitchDisk = two.makeCircle(two.width / 3, two.height / 2, pitchDiskRadius);
   pitchDisk.fill = color;
   pitchDisk.noStroke();
-  pitchDisk.translation.x = 10;
-  two.bind("update", function () {
+  pitchDisk.translation.set(10, 0);
+  //two.bind("update", function () {
     //rect.rotation += 0.01;
     //pitchDisk.translation.x += 5;
     //if (core.translation.x > two.width) {pitchDisk.translation.x = 0;}
-  });
+ // });
 }
 function display2dTwoJS(pitch) {
+  //console.log("pitch: " + pitch);
+ 
   let frequency = pitch; // 261.63;//pitch;
   const middleCfreq = 261.63;
   let midiNote = frequencyToMidiNoteNumber(frequency);
@@ -51,9 +53,14 @@ function display2dTwoJS(pitch) {
   let iOctave = Math.floor((midiNote + 0.5) / 12);
   //console.log("P = " + pitch);
   posInOctave = posInOctave; //frequencyToMidiNoteNumber(frequency);//12 * (Math.log( frequency / 440 )/Math.log(2) ); // relative to middle A?
-
-  pitchDisk.translation.y = iDisplayHeight - (posInOctave / 12) * iDisplayHeight;
-  pitchDisk.translation.x = ((iOctave - 2) / iOctaves) * iDisplayWidth;
+  let x = ((iOctave - 2) / iOctaves) * iDisplayWidth;
+  let y = iDisplayHeight - (posInOctave / 12) * iDisplayHeight;
+  if (typeof y !== "number" ) {
+    let fred = 0;
+    console.log("typof y: " + typeof y);
+  }
+  pitchDisk.translation.set(x, y);
+ // pitchDisk.position.x = ((iOctave - 2) / iOctaves) * iDisplayWidth;
 }
 
 function initPixiJS() {
@@ -196,7 +203,7 @@ function initGraphics() {
     //initPixiJS(); //init2dGraphics();
     //displayPitch2d(13.5); //dev
     initTwoJS();
-    //display2dTwoJS(440);
+    display2dTwoJS(440);
   }
 }
 initGraphics();

@@ -5000,6 +5000,13 @@ SOFTWARE.
         if (/href/.test(keys[i])) {
           elem.setAttributeNS(svg.xlink, keys[i], attrs[keys[i]]);
         } else {
+          /*if (keys[i] == 'transform') {
+            if (typeof attrs[keys[i]] !== "number" ) {
+              let fred = 0;
+            } else {
+              let martha = 0;
+            }
+          }*/
           elem.setAttribute(keys[i], attrs[keys[i]]);
         }
       }
