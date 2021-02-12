@@ -25,10 +25,10 @@ if (!window.requestAnimationFrame) {
 function initTwoJS() {
   var two = new Two({
     fullscreen: true,
-    autostart: true
+    autostart: true,
   }).appendTo(document.body);
   //var rect = two.makeRectangle(two.width / 2, two.height / 2, 50 ,50);
-  var color = 'rgba(255, 128, 0, 0.66)';
+  var color = "rgba(255, 128, 0, 0.66)";
   //rect.fill = color;
   //rect.noStroke();
 
@@ -37,12 +37,11 @@ function initTwoJS() {
   pitchDisk.fill = color;
   pitchDisk.noStroke();
   pitchDisk.translation.x = 10;
-  two.bind('update', function() {
+  two.bind("update", function () {
     //rect.rotation += 0.01;
     //pitchDisk.translation.x += 5;
     //if (core.translation.x > two.width) {pitchDisk.translation.x = 0;}
   });
-
 }
 function display2dTwoJS(pitch) {
   let frequency = pitch; // 261.63;//pitch;
@@ -55,11 +54,10 @@ function display2dTwoJS(pitch) {
 
   pitchDisk.translation.y = iDisplayHeight - (posInOctave / 12) * iDisplayHeight;
   pitchDisk.translation.x = ((iOctave - 2) / iOctaves) * iDisplayWidth;
-
 }
 
 function initPixiJS() {
-    // Autodetect, create and append the renderer to the body element
+  // Autodetect, create and append the renderer to the body element
   //var renderer = PIXI.autoDetectRenderer(120, 364, { backgroundColor: #0000FF, antialias: true });
   renderer = PIXI.autoDetectRenderer({ width: iDisplayWidth, height: iDisplayHeight, backgroundColor: 0x00ffdd, antialias: true });
   //renderer = PIXI.
@@ -94,7 +92,7 @@ function initPixiJS() {
     if (pitchDisk.x > 720) {
       pitchDisk.x = 0;
     }*/
-    
+
     //wave.clear();
     //Render the stage
     renderer.render(stage);
@@ -204,12 +202,14 @@ function initGraphics() {
 initGraphics();
 
 export function displayPitch(pitch) {
-  if (y3dGraphics) {
-    displayPitch3d(pitch);
-  } else {
-    //displayPitch2dCanvas(pitch);
-    //displayPitch2dPixi(pitch);
-    display2dTwoJS(pitch);
+  if (pitch != null) {
+    if (y3dGraphics) {
+      displayPitch3d(pitch);
+    } else {
+      //displayPitch2dCanvas(pitch);
+      //displayPitch2dPixi(pitch);
+      display2dTwoJS(pitch);
+    }
   }
 }
 export function displayPitch3d(pitch) {}
@@ -235,7 +235,6 @@ export function displayPitch2dPixi(pitch) {
   graphics.beginFill(0x0000ff); //0xe74c3c); // Red
   pitchDisk = graphics.drawCircle(0, 0, pitchDiskRadius); // drawCircle(x, y, radius)
   graphics.endFill();
-
 }
 
 function frequencyToMidiNoteNumber(frequency) {
@@ -399,11 +398,9 @@ export function displayWaveOld() {
 }*/
 
 export function displayWave() {
-  
   wave.clear();
   wave.lineStyle(2, 0xd5402b, 1);
 
- 
   var samplesBuffer, freeInd;
   // We assume here that window.iMaxSampleWl * 2 is at least width of wave display
   if (window.Settings.ySharedMemory) {
@@ -472,9 +469,9 @@ export function displayWave() {
         prevSampleVal = sampleVal;
         ind--;
       }
-      let waveHeight = iDisplayWidth/2;
-      let halfWaveHeight = waveHeight/2;
-      let verticalMargin = halfWaveHeight/3;
+      let waveHeight = iDisplayWidth / 2;
+      let halfWaveHeight = waveHeight / 2;
+      let verticalMargin = halfWaveHeight / 3;
       let midWaveOffset = verticalMargin + halfWaveHeight;
       wave.moveTo(0, midWaveOffset);
       for (i = 0; i < iDisplayWidth; i++) {
@@ -483,11 +480,9 @@ export function displayWave() {
         wave.lineTo(i, midWaveOffset + sampleVal * halfWaveHeight);
         ind--; // display backwards!
       }
-      stage.addChild(wave);//line.stroke();
+      stage.addChild(wave); //line.stroke();
     }
   }
-
-  
 }
 
 /*
