@@ -173,6 +173,7 @@ function displayPitch(timestamp) {
   }
   requestAnimationFrame(displayPitch);
 }
+window.yReadyForNextPitch = true;
 requestAnimationFrame(displayPitch);
 
 //function onPitchDeduced(pitchParam) {

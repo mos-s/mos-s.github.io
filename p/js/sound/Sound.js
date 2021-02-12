@@ -101,6 +101,7 @@ export class SoundObject extends Object {
         case "Pitch":
           //if (Settings.iPitchMethod == Settings.PitchMethods.iYinJsWorkerMethod) {
           SamplesBuffer.f32SamplesBuffer[SamplesBuffer.pitchInd] = e.data.val;
+          window.yReadyForNextPitch = true;
           //} else {
           //  pitchSamplesBuffer = e.data.val; // this should/could be a transfer!?
           //}
@@ -135,20 +136,19 @@ export class SoundObject extends Object {
       }
     };
 
-    const yMeasurePostMessage = true;//false;
+    const yMeasurePostMessage = true; //false;
     if (yMeasurePostMessage) {
       let arrayToPostz = new Float32Array(1024 * 1024);
       iPingCtr = 0;
       pingAndIncStartNsTime = performance.now();
       if (yTransfer) {
         // https://joji.me/en-us/blog/performance-issue-of-using-massive-transferable-objects-in-web-worker/#:~:text=To%20solve%20this%20problem%2C%20postMessage,since%20no%20copy%20is%20made.
-
         //soundWorker.postMessage({ cmd: "PingAndInc", yTransfer: yTransfer, iCtr: 0 }, arrayToPost, [arrayToPost.buffer]);
-///        soundWorker.postMessage(arrayToPost.buffer, [arrayToPostz.buffer]);
- //       let o =[arrayToPostz.buffer, 321];
+        ///        soundWorker.postMessage(arrayToPost.buffer, [arrayToPostz.buffer]);
+        //       let o =[arrayToPostz.buffer, 321];
         //o.a = arrayToPostz.buffer;
         //o.cmd = "PingAndInc";
- //       soundWorker.postMessage(o, [o]);
+        //       soundWorker.postMessage(o, [o]);
       } else {
         // copy
         soundWorker.postMessage({ cmd: "PingAndInc", yTransfer: yTransfer, iCtr: 0, array: arrayToPostz.buffer });
@@ -262,8 +262,8 @@ export class SoundObject extends Object {
     };
   } // end of setUpScriptProcessor
 
-    // scriptNode.onaudioprocess = function (e) {
-    /*
+  // scriptNode.onaudioprocess = function (e) {
+  /*
       var inputBuffer = e.inputBuffer;
       // The output buffer contains the samples that will be modified and played
       var outputBuffer = e.outputBuffer;
@@ -356,7 +356,10 @@ export class SoundObject extends Object {
 } // end of Sound class
 
 export function computeLatestPitch() {
-  soundWorker.postMessage({ cmd: "ComputePitch" });
+  if (window.yReadyForNextPitch) {
+    window.yReadyForNextPitch = false;
+    soundWorker.postMessage({ cmd: "ComputePitch" });
+  }
 }
 
 export function getLatestPitch() {
