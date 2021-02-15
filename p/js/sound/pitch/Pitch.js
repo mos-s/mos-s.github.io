@@ -13,7 +13,7 @@ export let dotProduct, iDotProductLength;
 const yDoTiming = false; //true;
 
 export function init() {
-  dotProduct = new Float32Array(window.iMaxSampleWl);
+  dotProduct = new Float32Array(window.Settings.iMaxSampleWl);
   iDotProductLength = dotProduct.length;
   let method;
 
@@ -80,7 +80,7 @@ function yinDotProduct(pitchSamplesBuffer) {
     bufferSize /= 2;
   */
   // Set up the yinBuffer as described in step one of the YIN paper.
-  //const yinBufferLength = window.iMaxSampleWl; //max_sample_wl_param;//bufferSize / 2;
+  //const yinBufferLength = window.Settings.iMaxSampleWl; //max_sample_wl_param;//bufferSize / 2;
   //const dotProduct = new Float32Array(yinBufferLength);
 
   // Compute the difference function as described in step 2 of the YIN paper.

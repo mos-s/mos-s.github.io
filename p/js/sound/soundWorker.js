@@ -74,23 +74,25 @@ onmessage = function (e) {
       //let samplesBuffer = SamplesBuffer.f32SamplesBuffer;
       let free = samplesBuffer[SamplesBuffer.freeInd];
 
-      let iMaxWlStart = free - Settings.iMaxSampleWl * 2;
-      if (iMaxWlStart < 0) {
-        iMaxWlStart += SamplesBuffer.iSamples; //iSamplesInBlock; //this_iSamples;
+      let iMaxSampleWlStart = free - Settings.iMaxSampleWl * 2;
+      if (iMaxSampleWlStart < 0) {
+        iMaxSampleWlStart += SamplesBuffer.iSamples; //iSamplesInBlock; //this_iSamples;
       }
-      var iWidth = Settings.iMaxSampleWl * 2; //window.iMaxSampleWl * 2;
+      var iWidth = Settings.iMaxSampleWl * 2; //window.Settings.iMaxSampleWl * 2;
       //var iByteWidth = 4;//iWidth * 4; // float is 4 bytes
-      //works - var slice = this_samplesBuffer.slice(iMaxWlStart, iMaxWlStart + iWidth) ;
-      //var fInputTexBuffer = new Float32Array(slice, iMaxWlStart * 4, iWidth); // can use dataview!? also - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array/Float32Array
+      //works - var slice = this_samplesBuffer.slice(iMaxSampleWlStart, iMaxSampleWlStart + iWidth) ;
+      //var fInputTexBuffer = new Float32Array(slice, iMaxSampleWlStart * 4, iWidth); // can use dataview!? also - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array/Float32Array
       //QUESTION: Better if main asked for samples? (would save wasted posts)
 
-      var pitchSamplesBuffer = new Float32Array(samplesBuffer.buffer, iMaxWlStart * 4, iWidth); // Would like to transfer this! I think it is fast because basically just sends pointer!!??
+      var pitchSamplesBuffer = new Float32Array(samplesBuffer.buffer, iMaxSampleWlStart * 4, iWidth); // Would like to transfer this! I think it is fast because basically just sends pointer!!??
       let pitch = pitchComputeMethod(pitchSamplesBuffer);
       if (Settings.ySharedMemory) {
         samplesBuffer[SamplesBuffer.pitchInd] = pitch;
       } else {
         // post to main thread
         postMessage({ cmd: "Pitch", val: pitch });
+        postMessage({ cmd: "PitchSamples", val: pitchSamplesBuffer });
+         
       }
       break;
     case "SamplesBuffer":
@@ -138,17 +140,17 @@ onmessage = function (e) {
 
                 /*
               //---------------------------Send pitch samples to main thread on every samples block! ----------------------------
-              let iMaxWlStart = free - Settings.iMaxSampleWl * 2;
-              if (iMaxWlStart < 0) {
-                iMaxWlStart += SamplesBuffer.iSamples; //iSamplesInBlock; //this_iSamples;
+              let iMaxSampleWlStart = free - Settings.iMaxSampleWl * 2;
+              if (iMaxSampleWlStart < 0) {
+                iMaxSampleWlStart += SamplesBuffer.iSamples; //iSamplesInBlock; //this_iSamples;
               }
-              var iWidth = Settings.iMaxSampleWl * 2; //window.iMaxSampleWl * 2;
+              var iWidth = Settings.iMaxSampleWl * 2; //window.Settings.iMaxSampleWl * 2;
               //var iByteWidth = 4;//iWidth * 4; // float is 4 bytes
-              //works - var slice = this_samplesBuffer.slice(iMaxWlStart, iMaxWlStart + iWidth) ;
-              //var fInputTexBuffer = new Float32Array(slice, iMaxWlStart * 4, iWidth); // can use dataview!? also - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array/Float32Array
+              //works - var slice = this_samplesBuffer.slice(iMaxSampleWlStart, iMaxSampleWlStart + iWidth) ;
+              //var fInputTexBuffer = new Float32Array(slice, iMaxSampleWlStart * 4, iWidth); // can use dataview!? also - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array/Float32Array
               //QUESTION: Better if main asked for samples? (would save wasted posts)
 
-              var pitchSamplesBuffer = new Float32Array(samplesBuffer.buffer, iMaxWlStart * 4, iWidth); // Would like to transfer this! I think it is fast because basically just sends pointer!!??
+              var pitchSamplesBuffer = new Float32Array(samplesBuffer.buffer, iMaxSampleWlStart * 4, iWidth); // Would like to transfer this! I think it is fast because basically just sends pointer!!??
               if (Settings.iPitchMethod == Settings.PitchMethods.iYinJsWorkerMethod) {
                 let pitch = pitchComputeMethod(pitchSamplesBuffer);
                 //samplesBuffer[SamplesBuffer.pitchInd] = pitch;
@@ -184,7 +186,7 @@ function yinDotProduct(pitchSamplesBuffer) {
     bufferSize /= 2;
   */
   // Set up the yinBuffer as described in step one of the YIN paper.
-  //const yinBufferLength = window.iMaxSampleWl; //max_sample_wl_param;//bufferSize / 2;
+  //const yinBufferLength = window.Settings.iMaxSampleWl; //max_sample_wl_param;//bufferSize / 2;
   //const dotProduct = new Float32Array(yinBufferLength);
 
   // Compute the difference function as described in step 2 of the YIN paper.

@@ -8,10 +8,10 @@ TODO
   game loop? pitch queue?
   ring buffer
 
-window.iMaxSampleWl
+window.Settings.iMaxSampleWl
   In audioworklet allows 128 sample min buff otherwise processor allows minimum of 256 samples.
   The higher the sample rate the lower the latency due to this buffer!
-  However our pitch algorithm needs window.iMaxSampleWl samples to detect lowest note in range (eg recorder).
+  However our pitch algorithm needs window.Settings.iMaxSampleWl samples to detect lowest note in range (eg recorder).
   So we need to queue the buffers (ie need ring buffer) to cover the lowest notes!
   It might be possible to modify algorithm so looks for high notes (up to length of available samples - eg one native buffer's worth) first and then lower notes.
     What kind of effect on reliability does shorter correlation range have?
@@ -100,11 +100,11 @@ function init(stream) {
   if (getRequestParam("timing") == "true") {
     yDoTiming = true;
   }
-
+  makeButtons();
   window.usefulSettingsAlert();
   soundObject = new SoundObject();
   if (soundObject.setUpSoundProcessor(stream, yin)) {
-    makeButtons();
+    //makeButtons();
   }
 }
 
@@ -135,20 +135,21 @@ function setEltVisible(x, yDisplay, sMode) {
 }
 
 function makeButtons() {
-  const playButton = document.getElementById("playButton");
+  /*const playButton = document.getElementById("playButton");
   playButton.addEventListener("click", soundObject.audioButtonHandler);
   //soundObject.audioButtonHandler();
   setEltVisible(playButton, false);
-
+*/
   const waveOnOffButton = document.getElementById("waveOnOffButton");
-  setEltVisible(waveOnOffButton, window.Settings.ySharedMemory, "inline");
-  if (window.Settings.ySharedMemory) {
+  setEltVisible(waveOnOffButton, true, "inline"); //setEltVisible(waveOnOffButton, window.Settings.ySharedMemory, "inline");
+  //if (window.Settings.ySharedMemory) {
     function waveOnOffButtonHandler() {
       yDisplayWave = !yDisplayWave;
-     /// setEltVisible(document.getElementById("waveform"), yDisplayWave);
+      //alert("Boo!");
+      //setEltVisible(document.getElementById("waveform"), yDisplayWave);
     }
     waveOnOffButton.addEventListener("click", waveOnOffButtonHandler);
-  }
+  //}
 }
 
 let delayPitchComputeToJustBeforeNextRenderMs = 0;
@@ -213,13 +214,13 @@ function computePitch(timestamp) {
 
 /*// time yin
 let this_samplesBuffer = new Float32Array(10 * 512);
-let window.iMaxSampleWl = 256;
-let iMaxWlStart = 0;
+let window.Settings.iMaxSampleWl = 256;
+let iMaxSampleWlStart = 0;
 var startNsTime = performance.now();
 var iIts = 1000;
 let this_pitch;
 for (var i = 0; i < iIts; i++) {
-  this_pitch = yin(this_samplesBuffer, window.iMaxSampleWl, iMaxWlStart);
+  this_pitch = yin(this_samplesBuffer, window.Settings.iMaxSampleWl, iMaxSampleWlStart);
   //console.log("\nthis_pitch = " + i);
 }
 var ellapsedItsMs = performance.now() - startNsTime;

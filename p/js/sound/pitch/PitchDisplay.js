@@ -8,13 +8,17 @@ let iDisplayWidth, iDisplayHeight;
 let pitchDiskRadius = 20;
 let iOctaves = 7;
 let renderer, stage, graphics, wave;
+let two;
+let canvasContext;
+let pitchDiskX = 0;
+let pitchDiskY = 0;
 
 //const canvas = document.querySelector("#c");
 //const renderer = new THREE.WebGLRenderer({ canvas });
-
+let canvasElement;
 const y3dGraphics = false;
 let pitchDisk;
-var detectorElem, canvasElem, canvasContext, waveCanvas, pitchElem, noteElem, detuneElem, detuneAmount;
+var detectorElem, canvasElem, waveCanvas, pitchElem, noteElem, detuneElem, detuneAmount;
 var DEBUGCANVAS;
 var yoffset = 0;
 
@@ -23,8 +27,8 @@ if (!window.requestAnimationFrame) {
 }
 
 function initTwoJS() {
-  var two = new Two({
-    fullscreen: true,
+  two = new Two({
+    fullscreen: false, // true will kill the buttons!?
     autostart: true,
   }).appendTo(document.body);
   //var rect = two.makeRectangle(two.width / 2, two.height / 2, 50 ,50);
@@ -38,14 +42,14 @@ function initTwoJS() {
   pitchDisk.noStroke();
   pitchDisk.translation.set(10, 0);
   //two.bind("update", function () {
-    //rect.rotation += 0.01;
-    //pitchDisk.translation.x += 5;
-    //if (core.translation.x > two.width) {pitchDisk.translation.x = 0;}
- // });
+  //rect.rotation += 0.01;
+  //pitchDisk.translation.x += 5;
+  //if (core.translation.x > two.width) {pitchDisk.translation.x = 0;}
+  // });
 }
 function display2dTwoJS(pitch) {
   //console.log("pitch: " + pitch);
- 
+
   let frequency = pitch; // 261.63;//pitch;
   const middleCfreq = 261.63;
   let midiNote = frequencyToMidiNoteNumber(frequency);
@@ -55,12 +59,12 @@ function display2dTwoJS(pitch) {
   posInOctave = posInOctave; //frequencyToMidiNoteNumber(frequency);//12 * (Math.log( frequency / 440 )/Math.log(2) ); // relative to middle A?
   let x = ((iOctave - 2) / iOctaves) * iDisplayWidth;
   let y = iDisplayHeight - (posInOctave / 12) * iDisplayHeight;
-  if (typeof y !== "number" ) {
+  if (typeof y !== "number") {
     let fred = 0;
     console.log("typof y: " + typeof y);
   }
   pitchDisk.translation.set(x, y);
- // pitchDisk.position.x = ((iOctave - 2) / iOctaves) * iDisplayWidth;
+  // pitchDisk.position.x = ((iOctave - 2) / iOctaves) * iDisplayWidth;
 }
 
 function initPixiJS() {
@@ -202,20 +206,36 @@ function initGraphics() {
   } else {
     //initPixiJS(); //init2dGraphics();
     //displayPitch2d(13.5); //dev
-    initTwoJS();
-    display2dTwoJS(440);
+    //initTwoJS();
+    // display2dTwoJS(440);
+    initCanvas();
   }
 }
 initGraphics();
 
+function initCanvas() {
+  canvasElement = document.createElement("canvas");
+  //canvas.style.position = "absolute";
+  //canvas.style.left = "0px";
+  //canvas.style.top = "0px";
+  //canvas.style.zIndex = "100";
+  canvasElement.width = iDisplayWidth; // + 'px';
+  canvasElement.height = iDisplayHeight; // + 'px';
+  canvasElement.style.background = "0x0000ff";
+  canvasContext = canvasElement.getContext("2d");
+  canvasContext.strokeStyle = "black";
+  canvasContext.lineWidth = 1;
+  canvasContext.scale(1, 1);
+  document.body.appendChild(canvasElement);
+}
 export function displayPitch(pitch) {
   if (pitch != null) {
     if (y3dGraphics) {
       displayPitch3d(pitch);
     } else {
-      //displayPitch2dCanvas(pitch);
+      displayPitch2dCanvas(pitch);
       //displayPitch2dPixi(pitch);
-      display2dTwoJS(pitch);
+      //display2dTwoJS(pitch);
     }
   }
 }
@@ -272,27 +292,42 @@ export function displayPitch2dCanvas(pitch) {
   }
   if (canvasContext) {
     //let pitch = soundObject.deduceLatestPitch();
-    canvasContext.clearRect(0, yoffset, 40, 40);
     /*var xoffset = 5;
     yoffset = 600 - pitch / 2;
     var radius = 20;
     */
+    let radius = 20;
     var xoffset = 0;
+    canvasContext.clearRect(pitchDiskX - 1, pitchDiskY - 1, radius * 2 + 2, radius * 2 + 2);
+    // /  canvasContext.clearRect(pitchDiskX - radius, pitchDiskY - radius, radius * 2, radius * 2);
+
+    let frequency = pitch; // 261.63;//pitch;
+    const middleCfreq = 261.63;
+    let midiNote = frequencyToMidiNoteNumber(frequency);
+    let posInOctave = (midiNote + 0.5) % 12;
+    let iOctave = Math.floor((midiNote + 0.5) / 12);
+    //console.log("P = " + pitch);
+    //posInOctave = posInOctave; //frequencyToMidiNoteNumber(frequency);//12 * (Math.log( frequency / 440 )/Math.log(2) ); // relative to middle A?
+    pitchDiskX = ((iOctave - 2) / iOctaves) * iDisplayWidth;
+    pitchDiskY = iDisplayHeight - (posInOctave / 12) * iDisplayHeight;
+    if (typeof y !== "number") {
+      let fred = 0;
+      console.log("typeof pitchDiskY: " + typeof pitchDiskY);
+    }
 
     //canvasContext.clearRect(xoffset, yoffset, radius* 2, radius * 2);
     canvasContext.beginPath();
-    canvasContext.arc(xoffset + radius, yoffset + radius, radius, 0, 2 * Math.PI, false);
+    canvasContext.arc(pitchDiskX + radius, pitchDiskY + radius, radius, 0, 2 * Math.PI, false);
     canvasContext.fillStyle = "green";
     canvasContext.fill();
     //canvasContext.lineWidth = 5;
-    //canvasContext.strokeStyle = 'green';//'#000033';
-    //canvasContext.stroke();
+    canvasContext.strokeStyle = "green"; //'#000033';
+    canvasContext.stroke();
     //console.log("pitch: " + pitch + "\nyoffset: " + yoffset);
   }
 }
 
-/*
-export function displayWaveOld() {
+export function displayWaveCanvas() {
   //var cycles = new Array;
 
   //analyser.getFloatTimeDomainData( buf ); // this sometimes causes: Uncaught TypeError: Cannot read property 'getFloatTimeDomainData' of null
@@ -300,7 +335,7 @@ export function displayWaveOld() {
   // TODO: Paint confidence meter on canvasElem here.
 
   var samplesBuffer, freeInd;
-  // We assume here that window.iMaxSampleWl * 2 is at least width of wave display
+  // We assume here that window.Settings.iMaxSampleWl * 2 is at least width of wave display
   if (window.Settings.ySharedMemory) {
     samplesBuffer = window.samplesBuffer.f32SamplesBuffer;
     freeInd = samplesBuffer[window.samplesBuffer.freeInd];
@@ -309,33 +344,14 @@ export function displayWaveOld() {
       return;
     } else {
       samplesBuffer = pitchSamplesBuffer;
-      freeInd = window.iMaxSampleWl * 2;
+      freeInd = window.Settings.iMaxSampleWl * 2;
     }
   }
   var ind = freeInd - 1;
 
   if (ind >= 0) {
     //dev
-    if (waveCanvas) {
-      // This draws the current waveform, useful for debugging
-      waveCanvas.clearRect(0, 0, 512, 256);
-      waveCanvas.strokeStyle = "red";
-      waveCanvas.beginPath();
-      waveCanvas.moveTo(0, 0);
-      waveCanvas.lineTo(0, 256);
-      waveCanvas.moveTo(128, 0);
-      waveCanvas.lineTo(128, 256);
-      waveCanvas.moveTo(256, 0);
-      waveCanvas.lineTo(256, 256);
-      waveCanvas.moveTo(384, 0);
-      waveCanvas.lineTo(384, 256);
-      waveCanvas.moveTo(512, 0);
-      waveCanvas.lineTo(512, 256);
-      waveCanvas.stroke();
-      waveCanvas.strokeStyle = "black";
-      waveCanvas.beginPath();
-      //waveCanvas.moveTo(0,buf[0]);
-
+    if (canvasContext) {
       // ----- sync on trough ---
       // Find next pos-going zero cross
       var i = 0;
@@ -367,49 +383,30 @@ export function displayWaveOld() {
         ind--;
       }
 
-      for (i = 0; i < 512; i++) {
-        //waveCanvas.lineTo(i,128+(buf[i]*128));
+      let waveHeight = iDisplayWidth / 2;
+      let halfWaveHeight = waveHeight / 2;
+      let verticalMargin = halfWaveHeight / 3;
+      let midWaveOffset = verticalMargin + halfWaveHeight;
+      canvasContext.clearRect(0,verticalMargin - 1, iDisplayWidth, waveHeight + 2);
+      canvasContext.strokeStyle = "red";
+      canvasContext.moveTo(0, midWaveOffset);
+      for (i = 0; i < iDisplayWidth; i++) {
+        //line.lineTo(i,128+(buf[i]*128));
         sampleVal = samplesBuffer[ind];
-        waveCanvas.lineTo(i, 128 + sampleVal * 128);
+        canvasContext.lineTo(i, midWaveOffset + sampleVal * halfWaveHeight);
         ind--; // display backwards!
       }
-      waveCanvas.stroke();
+      canvasContext.stroke();
     }
   }
+}
 
-  if (ac == -1) {
- 		detectorElem.className = "vague";
-	 	pitchElem.innerText = "--";
-		noteElem.innerText = "-";
-		detuneElem.className = "";
-		detuneAmount.innerText = "--";
- 	} else {
-	 	detectorElem.className = "confident";
-	 	pitch = ac;
-	 	pitchElem.innerText = Math.round( pitch ) ;
-	 	var note =  noteFromPitch( pitch );
-		noteElem.innerHTML = noteStrings[note%12];
-		var detune = centsOffFromPitch( pitch, note );
-		if (detune == 0 ) {
-			detuneElem.className = "";
-			detuneAmount.innerHTML = "--";
-		} else {
-			if (detune < 0)
-				detuneElem.className = "flat";
-			else
-				detuneElem.className = "sharp";
-			detuneAmount.innerHTML = Math.abs( detune );
-		}
-    }
-    
-}*/
-
-export function displayWave() {
+export function displayWavePixi() {
   wave.clear();
   wave.lineStyle(2, 0xd5402b, 1);
 
   var samplesBuffer, freeInd;
-  // We assume here that window.iMaxSampleWl * 2 is at least width of wave display
+  // We assume here that window.Settings.iMaxSampleWl * 2 is at least width of wave display
   if (window.Settings.ySharedMemory) {
     samplesBuffer = window.samplesBuffer.f32SamplesBuffer;
     freeInd = samplesBuffer[window.samplesBuffer.freeInd];
@@ -418,7 +415,7 @@ export function displayWave() {
       return;
     } else {
       samplesBuffer = pitchSamplesBuffer;
-      freeInd = window.iMaxSampleWl * 2;
+      freeInd = window.Settings.iMaxSampleWl * 2;
     }
   }
   var ind = freeInd - 1;
@@ -489,6 +486,115 @@ export function displayWave() {
       }
       stage.addChild(wave); //line.stroke();
     }
+  }
+}
+export function displayWave() {
+  displayWaveCanvas();
+  //displayWaveTwoJS();
+}
+
+export function displayWaveTwoJS() {
+  var samplesBuffer, freeInd;
+  // We assume here that window.Settings.iMaxSampleWl * 2 is at least width of wave display
+  if (window.Settings.ySharedMemory) {
+    samplesBuffer = window.samplesBuffer.f32SamplesBuffer;
+    freeInd = samplesBuffer[window.samplesBuffer.freeInd];
+  } else {
+    if (pitchSamplesBuffer == null) {
+      return;
+    } else {
+      samplesBuffer = pitchSamplesBuffer;
+      freeInd = window.Settings.iMaxSampleWl * 2;
+    }
+  }
+  var ind = freeInd - 1;
+
+  if (ind >= 0) {
+    //dev
+    //  if (wave) {
+    // This draws the current waveform, useful for debugging
+    //line.clearRect(0, 0, 512, 256);
+    //line.strokeStyle = "red";
+    //line.beginPath();
+    /*
+      wave.moveTo(0, 0);
+      wave.lineTo(0, 256);
+      wave.moveTo(128, 0);
+      wave.lineTo(128, 256);
+      wave.moveTo(256, 0);
+      wave.lineTo(256, 256);
+      wave.moveTo(384, 0);
+      wave.lineTo(384, 256);
+      wave.moveTo(512, 0);
+      wave.lineTo(512, 256);
+      //line.stroke();
+      //line.strokeStyle = "black";
+      //line.beginPath();
+      //line.moveTo(0,buf[0]);
+*/
+    // ----- sync on trough ---
+    // Find next pos-going zero cross
+    var i = 0;
+    var j = 0;
+    var prevSampleVal;
+    let sampleVal = samplesBuffer[ind];
+    if (samplesBuffer[ind - 1] > samplesBuffer[ind]) {
+      //rising wave (in reverse dir!)
+      ind--;
+      // find end of pos going
+      prevSampleVal = -1.5; // >1
+      for (i = 0; i < 512; i++) {
+        sampleVal = samplesBuffer[ind];
+        if (sampleVal < prevSampleVal) {
+          break;
+        }
+        prevSampleVal = sampleVal;
+        ind--;
+      }
+    }
+    // we are now neg going so look for pos going.
+    prevSampleVal = 1.5;
+    for (var j = 0; j < 512 - i; j++) {
+      sampleVal = samplesBuffer[ind];
+      if (sampleVal > prevSampleVal) {
+        break;
+      }
+      prevSampleVal = sampleVal;
+      ind--;
+    }
+    let waveHeight = iDisplayWidth / 2;
+    let halfWaveHeight = waveHeight / 2;
+    let verticalMargin = halfWaveHeight / 3;
+    let midWaveOffset = verticalMargin + halfWaveHeight;
+    /* pixi
+      wave.clear();
+      wave.lineStyle(2, 0xd5402b, 1);
+      wave.moveTo(0, midWaveOffset);
+      for (i = 0; i < iDisplayWidth; i++) {
+        //line.lineTo(i,128+(buf[i]*128));
+        sampleVal = samplesBuffer[ind];
+        wave.lineTo(i, midWaveOffset + sampleVal * halfWaveHeight);
+        ind--; // display backwards!
+      }
+      stage.addChild(wave); //line.stroke();
+      */
+    if (true) {
+      //var wave = two.makeCurve(110, 100, 120, 50, 140, 150, 160, 50, 180, 150, 190, 100, true);
+      var wave = two.makePath(110, 100, 120, 50, 140, 150, 160, 50, 180, 150, 190, 100, true);
+      wave.linewidth = 2;
+      //wave.scale = 1.75;
+      //wave.rotation = Math.PI / 2; // Quarter-turn
+      wave.noFill();
+    }
+
+    for (i = 0; i < iDisplayWidth; i++) {
+      //line.lineTo(i,128+(buf[i]*128));
+      sampleVal = samplesBuffer[ind];
+      wave.lineTo(i, midWaveOffset + sampleVal * halfWaveHeight);
+      ind--; // display backwards!
+    }
+
+    // }
   }
 }
 

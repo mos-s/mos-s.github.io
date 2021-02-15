@@ -19,7 +19,7 @@ window.samplesBuffer = SamplesBuffer.create();
 const yDoTiming = true;
 let yInsideRtn = false;
 
-//export const window.iMaxSampleWl = 512; //600 - should b f(samplerate)
+//export const window.Settings.iMaxSampleWl = 512; //600 - should b f(samplerate)
 //export const iSamplesInBlock = 512; //128; //512; //256; //128;
 let this_samplesBuffer;
 let ringBuffer;
@@ -105,6 +105,10 @@ export class SoundObject extends Object {
           //} else {
           //  pitchSamplesBuffer = e.data.val; // this should/could be a transfer!?
           //}
+          break;
+        case "PitchSamples":
+          //SamplesBuffer.f32SamplesBuffer.set(e.data.val, SamplesBuffer.iSamples - Settings.iMaxSampleWl * 2);
+          pitchSamplesBuffer = new Float32Array(e.data.val);
           break;
         case undefined:
 

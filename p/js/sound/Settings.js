@@ -40,7 +40,7 @@ export let Settings; // this is what is used in other files (and posted to other
 //const ySharedMemoryOverride = false; // eg simulate current firefox
 //const yTransferSampleBlocksOverride = true; // ie transfer them
 //const iScriptProcessorSamplesInBlockOverride = 1024; // 1024  seems to almost completely eliminate dropped sample blocks on lenovo.
-//const maxWlOverride = 256;
+//const iMaxSampleWlOverride = 256;
 //const yWriteToFloatTextureOverride = false;
 //const iPitchMethodOverride = iYinJsWorkerMethod; //iYinJsWorkerMethod;//iYinJsMainThreadMethod;
 let yAudioWorkletOverride, ySharedMemoryOverride, yTransferSampleBlocksOverride, iSamplesInBlockOverride, iMaxSampleWlOverride, yWriteToFloatTextureOverride, iPitchMethodOverride;
@@ -48,7 +48,7 @@ let yAudioWorkletOverride, ySharedMemoryOverride, yTransferSampleBlocksOverride,
 // default values
 const yTransferSampleBlocksDefault = false; // ie currently copy them
 const iScriptProcessorDefaultSamplesInBlock = 1024;
-const maxWlDefault = 512;
+const iMaxSampleWlDefault = 512;
 const yWriteToFloatTextureDefault = true; // Not true of IOS! Should test this like in https://stackoverflow.com/questions/28827511/webgl-ios-render-to-floating-point-texture
 const iPitchMethodDefault = iYinJsWorkerMethod;//iGpgpuMethod;
 
@@ -107,7 +107,7 @@ function initVars() {
     : iScriptProcessorDefaultSamplesInBlock;
   //iSamplesInBlock = (typeof iScriptProcessorSamplesInBlockOverride !== "undefined") ? iScriptProcessorSamplesInBlockOverride : yAudioWorklet?typeof AudioWorkletNode !== "undefined";
 
-  iMaxSampleWl = typeof iMaxSampleWlOverride !== "undefined" ? iMaxSampleWlOverride : maxWlDefault;
+  iMaxSampleWl = typeof iMaxSampleWlOverride !== "undefined" ? iMaxSampleWlOverride : iMaxSampleWlDefault;
 
   yWriteToFloatTexture = typeof yWriteToFloatTextureOverride !== "undefined" ? yWriteToFloatTextureOverride : yWriteToFloatTextureDefault;
 

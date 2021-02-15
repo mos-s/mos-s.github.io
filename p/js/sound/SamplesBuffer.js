@@ -12,7 +12,7 @@ NOTES
 //import {ySharedMemory, yAudioWorklet, iSamplesInBlock, iMaxSampleWl, yWriteToFloatTexture, iPitchMethod} from "./Settings.js"; // must be first or at least before Sound.js!
 import {Settings} from "./Settings.js";
 
-//import { iSamplesInBlock, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffer, SamplesBuffer, window.iMaxSampleWl } from "sound/Sound.js";
+//import { iSamplesInBlock, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffer, SamplesBuffer, window.Settings.iMaxSampleWl } from "sound/Sound.js";
 //import { SAMPLE_BLOCKS} from "./Sound.js";
 ///import * as Settings from "../SettingsOld.js";
 //let Settings;
@@ -26,7 +26,7 @@ export let freeInd, toProcessInd, pitchInd;
 const iNumberVars = 3; // Increment this if add var!!!
 
 export let iSamples, iAugmentedSamples; // do not change after init!
-export let iWrapAvoidSamples; // = Math.ceil((window.iMaxSampleWl * 2) / iSamplesInBlock) * iSamplesInBlock;
+export let iWrapAvoidSamples; // = Math.ceil((window.Settings.iMaxSampleWl * 2) / iSamplesInBlock) * iSamplesInBlock;
 
 export function init(iSamplesOrSharedArrayBuffer) {
   //We call this from any module which imports this module!
