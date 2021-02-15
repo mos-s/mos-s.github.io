@@ -54,8 +54,8 @@ if (navigator.mediaDevices) {
   navigator.mediaDevices
     .getUserMedia({
       audio: {
-        echoCancellation: true, 
-        noiseSuppression: true, 
+        echoCancellation: false, 
+        noiseSuppression: false, 
         autoGainControl: false
        },
       video: false,
