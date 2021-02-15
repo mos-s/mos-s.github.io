@@ -310,7 +310,7 @@ export function displayPitch2dCanvas(pitch) {
     //posInOctave = posInOctave; //frequencyToMidiNoteNumber(frequency);//12 * (Math.log( frequency / 440 )/Math.log(2) ); // relative to middle A?
     pitchDiskX = ((iOctave - 2) / iOctaves) * iDisplayWidth;
     pitchDiskY = iDisplayHeight - (posInOctave / 12) * iDisplayHeight;
-    if (typeof y !== "number") {
+    if (typeof pitchDiskY !== "number") {
       let fred = 0;
       console.log("typeof pitchDiskY: " + typeof pitchDiskY);
     }
