@@ -53,11 +53,13 @@ if (navigator.mediaDevices) {
   //alert("getUserMedia supported.");
   navigator.mediaDevices
     .getUserMedia({
-      audio: {
+      /*audio: {
+        true
         autoGainControl: false,
         echoCancellation: false,
         zoom: 0.1,
-      },
+      },*/
+      audio: true,
       video: false,
     })
     .then(function (stream) {
