@@ -54,10 +54,10 @@ if (navigator.mediaDevices) {
   navigator.mediaDevices
     .getUserMedia({
       audio: {
-        autoGainControl: true,
-        echoCancellation: false,
-        //zoom: 0.1,
-      },
+        echoCancellation: true, 
+        noiseSuppression: true, 
+        autoGainControl: false
+       },
       video: false,
     })
     .then(function (stream) {
