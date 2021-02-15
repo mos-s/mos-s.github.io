@@ -100,11 +100,11 @@ function init(stream) {
   if (getRequestParam("timing") == "true") {
     yDoTiming = true;
   }
-  makeButtons();
+ // makeButtons();
   window.usefulSettingsAlert();
   soundObject = new SoundObject();
   if (soundObject.setUpSoundProcessor(stream, yin)) {
-    //makeButtons();
+    makeButtons();
   }
 }
 
