@@ -68,6 +68,7 @@ export class SoundObject extends Object {
     pitchMethod = Pitch.init();
 
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    //var gainNode = audioContext.createGain();
     window.sampleRate = audioContext.sampleRate;
     Settings.sampleRate = audioContext.sampleRate;
     //setCapabilities();
@@ -329,7 +330,12 @@ export class SoundObject extends Object {
         source = audioContext.createMediaStreamSource(window.stream); // ie mic (don't need to start)
       }
       yOscillatorOn = true;
-      source.connect(soundProcessor);
+      var gainNode = audioContext.createGain();
+      gainNode.gain.value = 2;
+      source.connect(gainNode);
+
+      gainNode.connect(soundProcessor);
+
       soundProcessor.connect(audioContext.destination); //!???
     }
 
