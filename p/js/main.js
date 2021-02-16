@@ -54,9 +54,9 @@ if (navigator.mediaDevices) {
   navigator.mediaDevices
     .getUserMedia({
       audio: {
-        echoCancellation: false, 
-        noiseSuppression: false, 
-        autoGainControl: false
+        echoCancellation: false, // well certainly not if WE are doing echo cancellation at all...
+        noiseSuppression: false, // true? typicallly lowpass?
+        autoGainControl: false // has no effect on my ipad and iphone
        },
       video: false,
     })

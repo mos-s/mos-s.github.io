@@ -1,6 +1,6 @@
 "use strict";
 //import * as THREE from './resources/threejs/r125/build/three.module.js';
-import * as THREE from "https://unpkg.com/three/build/three.module.js";
+//import * as THREE from "https://unpkg.com/three/build/three.module.js";
 
 import { pitchSamplesBuffer } from "../Sound.js";
 
@@ -316,11 +316,11 @@ export function displayPitch2dCanvas(pitch) {
     }
 
     //canvasContext.clearRect(xoffset, yoffset, radius* 2, radius * 2);
-    canvasContext.beginPath();
+     canvasContext.beginPath();
     canvasContext.arc(pitchDiskX + radius, pitchDiskY + radius, radius, 0, 2 * Math.PI, false);
-    canvasContext.fillStyle = "green";
     canvasContext.fill();
     //canvasContext.lineWidth = 5;
+    canvasContext.fillStyle = "green";
     canvasContext.strokeStyle = "green"; //'#000033';
     canvasContext.stroke();
     //console.log("pitch: " + pitch + "\nyoffset: " + yoffset);
@@ -388,7 +388,8 @@ export function displayWaveCanvas() {
       let verticalMargin = halfWaveHeight / 3;
       let midWaveOffset = verticalMargin + halfWaveHeight;
       canvasContext.clearRect(0,verticalMargin - 1, iDisplayWidth, waveHeight + 2);
-      canvasContext.strokeStyle = "red";
+      canvasContext.beginPath();
+      
       canvasContext.moveTo(0, midWaveOffset);
       for (i = 0; i < iDisplayWidth; i++) {
         //line.lineTo(i,128+(buf[i]*128));
@@ -396,6 +397,7 @@ export function displayWaveCanvas() {
         canvasContext.lineTo(i, midWaveOffset + sampleVal * halfWaveHeight);
         ind--; // display backwards!
       }
+      canvasContext.strokeStyle = "red";
       canvasContext.stroke();
     }
   }

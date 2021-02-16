@@ -187,7 +187,7 @@ export class SoundObject extends Object {
       }
     } else {
       // AudioWorklet not available so make a ScriptProcessor (which runs in this thread).
-      soundProcessor = audioContext.createScriptProcessor(window.Settings.iSamplesInBlock, 2, 2);
+      soundProcessor = audioContext.createScriptProcessor(window.Settings.iSamplesInBlock, 1, 1);//, 1);// 2, 2);//outputs = 0 or don't connect to ctx.destination process is not called (on chrome at least)
       // let soundProcessorNode2 = audioContext.createScriptProcessor(4 * 1024, 2, 2);
       if (window.Settings.ySharedMemory) {
       } else {
@@ -330,13 +330,18 @@ export class SoundObject extends Object {
         source = audioContext.createMediaStreamSource(window.stream); // ie mic (don't need to start)
       }
       yOscillatorOn = true;
-      var gainNode = audioContext.createGain();
-      gainNode.gain.value = 2;
-      source.connect(gainNode);
-
-      gainNode.connect(soundProcessor);
-
-      soundProcessor.connect(audioContext.destination); //!???
+      const yGainNode = false;
+      if (yGainNode) {
+        var gainNode = audioContext.createGain();
+        gainNode.gain.value = 2;
+        source.connect(gainNode);
+        gainNode.connect(soundProcessor);
+      } else {
+        source.connect(soundProcessor);
+      }
+      if (!window.Settings.yAudioWorklet) {
+        soundProcessor.connect(audioContext.destination); //does this affect IOS agc? Without it we get no sound interrupt!
+      }
     }
 
     function movedivOld(timestamp) {
@@ -366,10 +371,14 @@ export class SoundObject extends Object {
 } // end of Sound class
 
 export function computeLatestPitch() {
-  if (window.yReadyForNextPitch) {
-    window.yReadyForNextPitch = false;
-    soundWorker.postMessage({ cmd: "ComputePitch" });
-  }
+  //if (window.ySharedMemory) {
+    
+  //} else {
+    if (window.yReadyForNextPitch) {
+      window.yReadyForNextPitch = false;
+      soundWorker.postMessage({ cmd: "ComputePitch" });
+    }
+  //}
 }
 
 export function getLatestPitch() {

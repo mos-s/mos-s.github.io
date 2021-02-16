@@ -17,9 +17,9 @@ onmessage = function (e) {
       // This currently conflicts with PingAmdInc transfer measuring below!!?
       let transferredSamples = new Float32Array(e.data);
       */
-     
+
     case "Samples":
-      // Put this in a function because duplicated below!?
+      // Put this in a function because duplicated below!? DEFER till understand if function will take pointer or what..
       {
         let newSamples = e.data.val || transferredSamples;
         //let samplesBuffer = SamplesBuffer.f32SamplesBuffer;
@@ -87,12 +87,12 @@ onmessage = function (e) {
       var pitchSamplesBuffer = new Float32Array(samplesBuffer.buffer, iMaxSampleWlStart * 4, iWidth); // Would like to transfer this! I think it is fast because basically just sends pointer!!??
       let pitch = pitchComputeMethod(pitchSamplesBuffer);
       if (Settings.ySharedMemory) {
-        samplesBuffer[SamplesBuffer.pitchInd] = pitch;
+        samplesBuffer[SamplesBuffer.pitchInd] = pitch; // not actually necessary (though available 0.5ms faster for draw!) now that we post the pitch to main thread as part of pitch computation cycle!
+        postMessage({ cmd: "Pitch", val: pitch }); // Added so next pitch computation will start! (now that it is driven from main thread)
       } else {
         // post to main thread
         postMessage({ cmd: "Pitch", val: pitch });
         postMessage({ cmd: "PitchSamples", val: pitchSamplesBuffer });
-         
       }
       break;
     case "SamplesBuffer":
@@ -138,28 +138,6 @@ onmessage = function (e) {
                 }
                 samplesBuffer[SamplesBuffer.freeInd] = free;
 
-                /*
-              //---------------------------Send pitch samples to main thread on every samples block! ----------------------------
-              let iMaxSampleWlStart = free - Settings.iMaxSampleWl * 2;
-              if (iMaxSampleWlStart < 0) {
-                iMaxSampleWlStart += SamplesBuffer.iSamples; //iSamplesInBlock; //this_iSamples;
-              }
-              var iWidth = Settings.iMaxSampleWl * 2; //window.Settings.iMaxSampleWl * 2;
-              //var iByteWidth = 4;//iWidth * 4; // float is 4 bytes
-              //works - var slice = this_samplesBuffer.slice(iMaxSampleWlStart, iMaxSampleWlStart + iWidth) ;
-              //var fInputTexBuffer = new Float32Array(slice, iMaxSampleWlStart * 4, iWidth); // can use dataview!? also - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array/Float32Array
-              //QUESTION: Better if main asked for samples? (would save wasted posts)
-
-              var pitchSamplesBuffer = new Float32Array(samplesBuffer.buffer, iMaxSampleWlStart * 4, iWidth); // Would like to transfer this! I think it is fast because basically just sends pointer!!??
-              if (Settings.iPitchMethod == Settings.PitchMethods.iYinJsWorkerMethod) {
-                let pitch = pitchComputeMethod(pitchSamplesBuffer);
-                //samplesBuffer[SamplesBuffer.pitchInd] = pitch;
-                postMessage(pitch);
-              } else {
-                // Send samples to main thread for computation
-                postMessage(pitchSamplesBuffer); // ie we send (to main.onMessage) just enough of  most recent samples for pitch deduction! Avoids shared memory!!?
-              }
-              */
               }
               break;
             default:
@@ -213,7 +191,7 @@ function yinComputeFromDotProduct() {
   }
 
   const threshold = 0.07;
-  let sampleRate = Settings.sampleRate;//48000;
+  let sampleRate = Settings.sampleRate; //48000;
   const probabilityThreshold = 0.1;
 
   let probability = 0,

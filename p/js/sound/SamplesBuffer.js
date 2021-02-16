@@ -68,7 +68,7 @@ export function init(iSamplesOrSharedArrayBuffer) {
 }
 
 export function create() {
-  init(3 * 1024); 
+  init(16 * 1024); 
   let o = {};
   o.f32SamplesBuffer = f32SamplesBuffer;
   o.freeInd = freeInd;
