@@ -53,12 +53,16 @@ const yWriteToFloatTextureDefault = true; // Not true of IOS! Should test this l
 const iPitchMethodDefault = iYinJsWorkerMethod;//iGpgpuMethod;
 
 // 'global unchanging (after init) values'!
-let ySharedMemory, yAudioWorklet, yWriteToFloatTexture; // ie capabilities!
+let ySharedMemory, yAudioWorklet, yWebgpuDefined, yWebgpuAdapterDefined, yWriteToFloatTexture,yWebgpu; // ie capabilities!
 let yTransferSampleBlocks;
 let iSamplesInBlock, iMaxSampleWl;
 let iPitchMethod;
 
+const webgpu = navigator.gpu;
+
+
 initVars();
+
 if (typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope) {
   console.log("I am in a web worker");
 } else {
@@ -92,7 +96,15 @@ function setOverridesFromUrlParams () {
   }
 
 }
-function initVars() {
+
+async function initVars() {
+
+  if (webgpu) { // where should this variable be? ... maybe in own module for webgpu?
+    alert("navigator.gpu IS DEFINED!!")
+    const adapter = await webgpu.requestAdapter();
+    yWebgpuAdapterDefined = typeof adapter != "undefined";
+  }
+
   setOverridesFromUrlParams();
   ySharedMemory = typeof ySharedMemoryOverride !== "undefined" ? ySharedMemoryOverride : typeof SharedArrayBuffer !== "undefined";
 
@@ -111,9 +123,11 @@ function initVars() {
 
   yWriteToFloatTexture = typeof yWriteToFloatTextureOverride !== "undefined" ? yWriteToFloatTextureOverride : yWriteToFloatTextureDefault;
 
+  yWebgpuDefined = typeof navigator.gpu !== "undefined";
+
   iPitchMethod = typeof iPitchMethodOverride !== "undefined" ? iPitchMethodOverride : iPitchMethodDefault;
 
-  Settings = { ySharedMemory, yAudioWorklet, yTransferSampleBlocks, iSamplesInBlock, iMaxSampleWl, yWriteToFloatTexture, iPitchMethod, PitchMethods };
+  Settings = { ySharedMemory, yAudioWorklet, yWebgpuAdapterDefined, yWebgpuAdapterDefined, yTransferSampleBlocks, iSamplesInBlock, iMaxSampleWl, yWriteToFloatTexture, iPitchMethod, PitchMethods };
 
   // --------------------- Do any url param overrides -------------------
   /*for (var key in Settings) {
@@ -149,6 +163,12 @@ export function usefulSettingsAlert() {
     "\n" +
     "yAudioWorklet: " +
     Settings.yAudioWorklet +
+    "\n" +
+    "yWebgpuDefined: " +
+    Settings.yWebgpuDefined +
+    "\n" +
+    "yWebgpuAdapterDefined: " +
+    Settings.yWebgpuAdapterDefined +
     "\n" +
     "SharedArrayBuffer defined: " +
     (typeof SharedArrayBuffer !== "undefined" ? "true" : "false") +

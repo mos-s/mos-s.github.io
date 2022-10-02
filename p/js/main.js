@@ -49,29 +49,55 @@ var requestAnimationFrameId = null;
 //var DEBUGCANVAS = null;
 export var iSampleRate;
 
-if (navigator.mediaDevices) {
-  //alert("getUserMedia supported.");
-  navigator.mediaDevices
-    .getUserMedia({
-      audio: {
-        echoCancellation: false, // well certainly not if WE are doing echo cancellation at all...
-        noiseSuppression: false, // true? typicallly lowpass?
-        autoGainControl: false // has no effect on my ipad and iphone
-       },
-      video: false,
-    })
-    .then(function (stream) {
-      init(stream);
-      //doStuff(stream);
-    })
-    .catch(function (err) {
-      alert("The following gUM error occured: " + err);
-    });
-} else {
-  alert("navigator.getUserMedia = " + navigator.getUserMedia);
-  alert("getUserMedia not supported on your browser!!");
+//https://web.dev/gpu-compute/
+//https://www.ibiblio.org/e-notes/webgpu/webgpu.htm
+//getGpu(myGetUserMedia);
+//https://forum.orillusion.com/topic/13/request-device%E6%8A%A5%E9%94%99
+/*var adapter = await navigator.gpu.requestAdapter();
+if (!adapter) { 
+  var i = 0;
+  alert("!!!!") 
 }
+const device = await adapter.requestDevice();
 
+async function getGpu(callback) {
+  const adapter = await navigator.gpu.requestAdapter();
+  if (!adapter) {
+    callback();
+  } else {
+    device = await adapter.requestDevice();
+    callback();
+  }
+}
+*/
+
+
+//myGetUserMedia();
+//function myGetUserMedia() {
+  if (navigator.mediaDevices) {
+    //alert("getUserMedia supported.");
+    navigator.mediaDevices
+      .getUserMedia({
+        audio: {
+          echoCancellation: false, // well certainly not if WE are doing echo cancellation at all...
+          noiseSuppression: false, // true? typicallly lowpass?
+          autoGainControl: false, // has no effect on my ipad and iphone
+        },
+        video: false,
+      })
+      .then(function (stream) {
+        init(stream);
+
+        //doStuff(stream);
+      })
+      .catch(function (err) {
+        alert("The following gUM error occured: " + err);
+      });
+  } else {
+    alert("navigator.getUserMedia = " + navigator.getUserMedia);
+    alert("getUserMedia not supported on your browser!!");
+  }
+//}
 /*function determineFastestMethod() {
   // returns fastest method or null
   const iTimingIts = 1000;
@@ -100,14 +126,13 @@ function init(stream) {
   if (getRequestParam("timing") == "true") {
     yDoTiming = true;
   }
- // makeButtons();
+  // makeButtons();
   window.usefulSettingsAlert();
   soundObject = new SoundObject();
   if (soundObject.setUpSoundProcessor(stream, yin)) {
     makeButtons();
   }
 }
-
 
 /*node.onaudioprocess = function (data) {
     var leftChannel = data.inputBuffer.getChannelData(0).buffer;
@@ -143,12 +168,12 @@ function makeButtons() {
   const waveOnOffButton = document.getElementById("waveOnOffButton");
   setEltVisible(waveOnOffButton, true, "inline"); //setEltVisible(waveOnOffButton, window.Settings.ySharedMemory, "inline");
   //if (window.Settings.ySharedMemory) {
-    function waveOnOffButtonHandler() {
-      yDisplayWave = !yDisplayWave;
-      //alert("Boo!");
-      //setEltVisible(document.getElementById("waveform"), yDisplayWave);
-    }
-    waveOnOffButton.addEventListener("click", waveOnOffButtonHandler);
+  function waveOnOffButtonHandler() {
+    yDisplayWave = !yDisplayWave;
+    //alert("Boo!");
+    //setEltVisible(document.getElementById("waveform"), yDisplayWave);
+  }
+  waveOnOffButton.addEventListener("click", waveOnOffButtonHandler);
   //}
 }
 

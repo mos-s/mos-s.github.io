@@ -1,23 +1,29 @@
 DESCRIPTION
 
-Uses ScriptProcessor (ie not AudioWorklet) to deduce pitch and show as solid circle.
-Does not use wasm.
+
+Shows capabilities of browser on current hardware eg AudioWokletNode, ShareArrayBuffer etc
+Allows sound processing (basically dot product) using shaders! (based on examples at http://www.vizitsolutions.com/portfolio/webgl/gpgpu)
+Uses AudioWorklet (or ScriptProcessor if not available) to collect wave, deduce pitch and show as solid circle (using pixi.js).
+Does not currently use wasm.
 Currently only recognises highish notes of recorder.
 
 GOAL
-Use audioWorklet or scriptProcessor according to available.
 Process sound in js and/or wasm
 Integrate babylon
 	babylon and gpgpu poss?
 Use ring buffer
 Use workers	
-Use shared memory if available.
-Compute pitch dot product with shader!
+Use shared memory if available. ?implemented?
 
 IMPROVEMENTS
 	SoundObject structure improve!?
 	Final part of pitch computation in wasm
 	Organise code. eg use folder 'webgl'?
+
+Upload to website
+
+
+
 
 
 PLAN
@@ -26,4 +32,5 @@ PLAN
 
 CURRENT STATE
 	2020_11_29 - 690hz sine wave being passed through 512 sample script processor. pitch rtn is called ok and results sent to console.
+	2022_09_29 - works great for basic testing of a device ... would like to integrate webasm and maybe babylon (sprites?)
 	

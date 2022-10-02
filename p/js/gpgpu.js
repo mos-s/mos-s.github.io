@@ -3,7 +3,7 @@
 DESCRIPTION 
   from lesson at - http://www.vizitsolutions.com/portfolio/webgl/gpgpu and the few files it refers to. (html and main.js were missing)
 
-  Works with both FLOAT or UNIGNED_BYTES outputTexture. (set window.yOES_texture_float accordingly)
+  Works with both FLOAT or UNSIGNED_BYTES outputTexture. (set window.yOES_texture_float accordingly)
 
 TODO
   if gpgpUtility.isFloatingTexture() fails currently does nothing - must make it try to use UNSIGNED_BYTE texture(s)
