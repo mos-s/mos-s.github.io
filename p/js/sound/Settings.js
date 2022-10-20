@@ -158,7 +158,7 @@ export function usefulSettingsAlert() {
   //   "AudioWorkletNode defined = " + (typeof AudioWorkletNode !== "undefined" ? "true" : "false")
   //   `
   let s =
-    "AudioWorkletNode defined: " +
+    "AudioWorkletNodez defined: " +
     (typeof AudioWorkletNode !== "undefined" ? "true" : "false") +
     "\n" +
     "yAudioWorklet: " +
