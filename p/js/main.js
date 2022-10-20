@@ -111,13 +111,16 @@ function getUserMedia(dictionary, callback) {
           echoCancellation: false, // well certainly not if WE are doing echo cancellation at all...
           noiseSuppression: false, // true? typicallly lowpass?
           autoGainControl: false, // has no effect on my ipad and iphone
+          latency: 0.001,
           //"googHighpassFilter": "false"
         },
         video: false,
       })
       .then(function (stream) {
         init(stream);
-
+        
+        const supportedConstraints = navigator.mediaDevices.getSupportedConstraints();// ie What is considered  these are not their values (how do I get values for this stream?)
+        var z = supportedConstraints;
         //doStuff(stream);
       })
       .catch(function (err) {
