@@ -67,7 +67,8 @@ export class SoundObject extends Object {
     // ie AudioWorklet or ScriptProcessor?
     pitchMethod = Pitch.init();
 
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    //audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    audioContext = new (window.AudioContext || window.webkitAudioContext)({latencyHint: 0});// https://stackoverflow.com/questions/56036261/reduce-audio-playback-latency-from-microphone-input-in-javascript
     //var gainNode = audioContext.createGain();
     window.sampleRate = audioContext.sampleRate;
     Settings.sampleRate = audioContext.sampleRate;

@@ -5,7 +5,7 @@ Shows capabilities of browser on current hardware eg AudioWokletNode, ShareArray
 Allows sound processing (basically dot product) using shaders! (based on examples at http://www.vizitsolutions.com/portfolio/webgl/gpgpu)
 Uses AudioWorklet (or ScriptProcessor if not available) to collect wave, deduce pitch and show as solid circle (using pixi.js).
 Does not currently use wasm.
-Currently only recognises highish notes of recorder.
+Currently only recognises highish notes of recorder. (max wl is 512 sanples!)
 
 GOAL
 Process sound in js and/or wasm

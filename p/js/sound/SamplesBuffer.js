@@ -58,8 +58,8 @@ export function init(iSamplesOrSharedArrayBuffer) {
   f32SamplesBuffer = new Float32Array(sab); // zeroed
   f32SamplesBuffer[0] = 111; //dev
 
-  iAugmentedSamples = f32SamplesBuffer.length - iNumberVars;
-  iSamples = iAugmentedSamples - iWrapAvoidSamples;
+  iAugmentedSamples = f32SamplesBuffer.length - iNumberVars; // why are we 'back deducing' here?
+  iSamples = iAugmentedSamples - iWrapAvoidSamples;// why are we 'back deducing' here?
 
   // Compute shared var indexes
   freeInd = iAugmentedSamples; // immediately after samples

@@ -71,6 +71,35 @@ async function getGpu(callback) {
 }
 */
 
+/* following from pitch detect at - https://github.com/cwilso/PitchDetect/commit/dcae53dc491e42806870abf5588f6f46df56a9a5 (which is still being updated!)
+navigator.mediaDevices.getUserMedia(
+  {
+      "audio": {
+          "mandatory": {
+              "googEchoCancellation": "false",
+              "googAutoGainControl": "false",
+              "googNoiseSuppression": "false",
+              "googHighpassFilter": "false"
+          },
+          "optional": []
+      },
+  }).then((stream) => {
+
+also
+
+function getUserMedia(dictionary, callback) {
+    try {
+        navigator.getUserMedia = 
+        	navigator.getUserMedia ||
+        	navigator.webkitGetUserMedia ||
+        	navigator.mozGetUserMedia;
+        navigator.getUserMedia(dictionary, callback, error);
+    } catch (e) {
+        alert('getUserMedia threw exception :' + e);
+    }
+}
+*/
+
 
 //myGetUserMedia();
 //function myGetUserMedia() {
@@ -82,6 +111,7 @@ async function getGpu(callback) {
           echoCancellation: false, // well certainly not if WE are doing echo cancellation at all...
           noiseSuppression: false, // true? typicallly lowpass?
           autoGainControl: false, // has no effect on my ipad and iphone
+          //"googHighpassFilter": "false"
         },
         video: false,
       })
