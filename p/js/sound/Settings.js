@@ -58,7 +58,7 @@ let yTransferSampleBlocks;
 let iSamplesInBlock, iMaxSampleWl;
 let iPitchMethod;
 
-const webgpu = navigator.gpu;
+const webgpu = false;//navigator.gpu;
 
 
 initVars();
@@ -126,6 +126,7 @@ async function initVars() {
   yWebgpuDefined = typeof navigator.gpu !== "undefined";
 
   iPitchMethod = typeof iPitchMethodOverride !== "undefined" ? iPitchMethodOverride : iPitchMethodDefault;
+  window.iPitchMethod = iPitchMethod; // is this then accessible everywhere? eg in workers too?
 
   Settings = { ySharedMemory, yAudioWorklet, yWebgpuAdapterDefined, yWebgpuAdapterDefined, yTransferSampleBlocks, iSamplesInBlock, iMaxSampleWl, yWriteToFloatTexture, iPitchMethod, PitchMethods };
 

@@ -30,9 +30,8 @@ export function init() {
       gpgpu.exec();
       method = computeWithGpgpu;
       break;
-    case iGpgpuMethod:
-      break;
     default:
+      alert("unhandled window.iPitchMethod value");
   }
 
   computeMethod = function (pitchSamplesBuffer) {

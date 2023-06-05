@@ -20,6 +20,9 @@ IMPROVEMENTS
 	Final part of pitch computation in wasm
 	Organise code. eg use folder 'webgl'?
 
+
+Build
+
 Upload to website
 
 

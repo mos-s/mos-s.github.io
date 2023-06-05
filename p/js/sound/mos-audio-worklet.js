@@ -1,5 +1,5 @@
 "use strict";
-
+// This is the audioworklet with it's process function!
 
 ///import Module from "./simple-kernel.wasmmodule.js";
 ///import { RENDER_QUANTUM_FRAMES, MAX_CHANNEL_COUNT, SAMPLE_BLOCKS, HeapAudioBuffer, SamplesBufferWasm } from "./wasm-audio-helper.js";
@@ -311,7 +311,7 @@ function yinComputeFromDotProduct() {
     dotProduct[t] *= t / runningSum; //yinBuffer[t] = yinBuffer[t] * (t / runningSum);
   }
 
-  const threshold = 0.07;
+  const threshold = 0.01;//0.07;
   const sampleRate = 48000;
   const probabilityThreshold = 0.1;
 
