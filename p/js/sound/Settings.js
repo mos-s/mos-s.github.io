@@ -58,7 +58,7 @@ let yTransferSampleBlocks;
 let iSamplesInBlock, iMaxSampleWl;
 let iPitchMethod;
 
-const webgpu = navigator.gpu;
+const webgpu = false;//navigator.gpu;
 
 
 initVars();
