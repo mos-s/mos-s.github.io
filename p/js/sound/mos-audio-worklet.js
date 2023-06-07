@@ -311,7 +311,7 @@ function yinComputeFromDotProduct() {
     dotProduct[t] *= t / runningSum; //yinBuffer[t] = yinBuffer[t] * (t / runningSum);
   }
 
-  const threshold = 0.01;
+  const threshold = 0.07;
   const sampleRate = 48000;
   const probabilityThreshold = 0.1;
 
