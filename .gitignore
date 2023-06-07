@@ -1,5 +1,6 @@
 #ignore all
 *
 
-#except for
+#except for (2023_06_07)
 !.gitignore
+!/p
