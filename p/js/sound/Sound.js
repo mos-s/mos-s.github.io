@@ -155,10 +155,10 @@ export class SoundObject extends Object {
         //o.a = arrayToPostz.buffer;
         //o.cmd = "PingAndInc";
         //       soundWorker.postMessage(o, [o]);
-        //alert("got here!");
+        alert("got here!");
       } else {
         // copy
-        alert("got here2!");
+        //alert("got here2!");
         soundWorker.postMessage({ cmd: "PingAndInc", yTransfer: yTransfer, iCtr: 0, array: arrayToPostz.buffer });
       }
     }
